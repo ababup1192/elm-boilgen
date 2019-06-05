@@ -24,12 +24,58 @@ import Task as Task
 
 
 type alias Model =
-    { columns : Array DbField }
+    { dbFields : Array DbField }
 
 
 init : () -> ( Model, Cmd Msg )
 init _ =
-    ( Model Array.empty, Cmd.none )
+    ( Model <|
+        Array.fromList
+            [ PrimaryKey "id"
+            , BigInt
+                { fieldName = "hoge"
+                , fieldLength = 20
+                , isUnsigned = True
+                , isNotNull = True
+                }
+            , BigInt
+                { fieldName = "foo"
+                , fieldLength = 5
+                , isUnsigned = False
+                , isNotNull = True
+                }
+            , BigInt
+                { fieldName = "bar"
+                , fieldLength = 10
+                , isUnsigned = False
+                , isNotNull = False
+                }
+            , VarChar
+                { fieldName = "aaa"
+                , fieldLength = 10
+                , isNotNull = True
+                }
+            , VarChar
+                { fieldName = "bbb"
+                , fieldLength = 20
+                , isNotNull = False
+                }
+            , Boolean
+                { fieldName = "bool"
+                , isNotNull = True
+                }
+            , Datetime
+                { fieldName = "dt"
+                , isNotNull = True
+                }
+            , Enum
+                { fieldName = "enm"
+                , values = [ "DEFAULT", "FIRST", "SECOND" ]
+                , isNotNull = True
+                }
+            ]
+    , Cmd.none
+    )
 
 
 {-| -TODO: FK制約を増やす。 UI込み -
@@ -77,8 +123,6 @@ type DbField
     | Enum Enum_
 
 
-{-| -TODO: DDLに変換作業 TDD
--}
 dbFieldToDDL : DbField -> String
 dbFieldToDDL dbField =
     case dbField of
@@ -174,6 +218,66 @@ dbFieldToFieldName dbField =
             fieldName
 
 
+isPrimaryKey : DbField -> Bool
+isPrimaryKey dbField =
+    case dbField of
+        PrimaryKey _ ->
+            True
+
+        _ ->
+            False
+
+
+isBigint : DbField -> Bool
+isBigint dbField =
+    case dbField of
+        BigInt _ ->
+            True
+
+        _ ->
+            False
+
+
+isVarChar : DbField -> Bool
+isVarChar dbField =
+    case dbField of
+        VarChar _ ->
+            True
+
+        _ ->
+            False
+
+
+isDatetime : DbField -> Bool
+isDatetime dbField =
+    case dbField of
+        Datetime _ ->
+            True
+
+        _ ->
+            False
+
+
+isBoolean : DbField -> Bool
+isBoolean dbField =
+    case dbField of
+        Boolean _ ->
+            True
+
+        _ ->
+            False
+
+
+isEnum : DbField -> Bool
+isEnum dbField =
+    case dbField of
+        Enum _ ->
+            True
+
+        _ ->
+            False
+
+
 dbFieldToFormatString : DbField -> String
 dbFieldToFormatString dbField =
     let
@@ -201,14 +305,6 @@ dbFieldToFormatString dbField =
 dbFieldArrayToDDL : Array DbField -> String
 dbFieldArrayToDDL dbFieldArray =
     let
-        isPrimaryKey dbField =
-            case dbField of
-                PrimaryKey _ ->
-                    True
-
-                _ ->
-                    False
-
         primaryTextArray =
             dbFieldArray
                 |> Array.filter isPrimaryKey
@@ -278,34 +374,232 @@ dbFieldArrayToInsertMethod tableName dbFieldArray =
         ]
 
 
-{-| -TODO: 見た目を作っていく
--}
-dbFieldToView : DbField -> Html Msg
+fieldTypeSelectView : DbField -> Html Msg
+fieldTypeSelectView dbField =
+    div [ class "select" ]
+        [ select []
+            [ option [ selected <| isPrimaryKey dbField ]
+                [ text "PRIMARY KEY" ]
+            , option [ selected <| isBigint dbField ]
+                [ text "BIGINT" ]
+            , option [ selected <| isVarChar dbField ]
+                [ text "VARCHAR" ]
+            , option [ selected <| isBoolean dbField ]
+                [ text "BOOLEAN" ]
+            , option [ selected <| isDatetime dbField ]
+                [ text "DATETIME" ]
+            , option [ selected <| isEnum dbField ]
+                [ text "ENUM" ]
+            ]
+        ]
+
+
+dbFieldToView : DbField -> List (Html Msg)
 dbFieldToView dbField =
     case dbField of
         PrimaryKey fieldName ->
-            article [ class "base_field" ]
-                []
+            [ div []
+                [ input [ class "input", type_ "text", value fieldName ]
+                    []
+                ]
+            , div []
+                [ fieldTypeSelectView dbField
+                ]
+            , div []
+                [ input [ class "input", readonly True, type_ "number", value "20" ]
+                    []
+                ]
+            , div []
+                [ div [ class "checkbox" ]
+                    [ label []
+                        [ input [ checked True, disabled True, type_ "checkbox" ]
+                            []
+                        , span [ class "disabled" ]
+                            []
+                        ]
+                    ]
+                ]
+            , div []
+                [ div [ class "checkbox" ]
+                    [ label []
+                        [ input [ checked True, disabled True, type_ "checkbox", checked True ]
+                            []
+                        , span [ class "disabled" ]
+                            []
+                        ]
+                    ]
+                ]
+            , div []
+                [ div [ class "checkbox" ]
+                    [ label []
+                        [ input [ checked True, disabled True, type_ "checkbox" ]
+                            []
+                        , span [ class "disabled" ]
+                            []
+                        ]
+                    ]
+                ]
+            ]
 
         BigInt { fieldName, fieldLength, isUnsigned, isNotNull } ->
-            article [ class "base_field" ]
+            [ div []
+                [ input [ class "input", type_ "text", value fieldName ]
+                    []
+                ]
+            , div []
+                [ fieldTypeSelectView dbField
+                ]
+            , div []
+                [ input [ class "input", type_ "number", value "20" ]
+                    []
+                ]
+            , div []
+                [ div [ class "checkbox" ]
+                    [ label []
+                        [ input [ checked True, type_ "checkbox" ]
+                            []
+                        , span []
+                            []
+                        ]
+                    ]
+                ]
+            , div []
+                [ div [ class "checkbox" ]
+                    [ label []
+                        [ input [ checked True, type_ "checkbox" ]
+                            []
+                        , span []
+                            []
+                        ]
+                    ]
+                ]
+            , div []
                 []
+            ]
 
         VarChar { fieldName, fieldLength, isNotNull } ->
-            article [ class "base_field" ]
+            [ div []
+                [ input [ class "input", type_ "text", value fieldName ]
+                    []
+                ]
+            , div []
+                [ fieldTypeSelectView dbField
+                ]
+            , div []
+                [ input [ class "input", type_ "text", value "100" ]
+                    []
+                ]
+            , div []
                 []
+            , div []
+                [ div [ class "checkbox" ]
+                    [ label []
+                        [ input [ checked True, type_ "checkbox" ]
+                            []
+                        , span []
+                            []
+                        ]
+                    ]
+                ]
+            , div []
+                []
+            ]
 
         Boolean { fieldName, isNotNull } ->
-            article [ class "base_field" ]
+            [ div []
+                [ input [ class "input", type_ "text", value fieldName ]
+                    []
+                ]
+            , div []
+                [ fieldTypeSelectView dbField
+                ]
+            , div []
                 []
+            , div []
+                []
+            , div []
+                [ div [ class "checkbox" ]
+                    [ label []
+                        [ input [ checked True, type_ "checkbox" ]
+                            []
+                        , span []
+                            []
+                        ]
+                    ]
+                ]
+            , div []
+                []
+            ]
 
         Datetime { fieldName, isNotNull } ->
-            article [ class "base_field" ]
+            [ div []
+                [ input [ class "input", type_ "text", value fieldName ]
+                    []
+                ]
+            , div []
+                [ fieldTypeSelectView dbField
+                ]
+            , div []
+                [ input [ class "input", type_ "text", value "6" ]
+                    []
+                ]
+            , div []
                 []
+            , div []
+                [ div [ class "checkbox" ]
+                    [ label []
+                        [ input [ checked True, type_ "checkbox" ]
+                            []
+                        , span []
+                            []
+                        ]
+                    ]
+                ]
+            , div []
+                []
+            ]
 
         Enum { fieldName, values, isNotNull } ->
-            article [ class "base_field" ]
+            [ div []
+                [ input [ class "input", type_ "text", value fieldName ]
+                    []
+                ]
+            , div [ class "enum" ]
+                [ div [ class "layout-enum" ]
+                    [ fieldTypeSelectView dbField
+                    , input [ class "input", placeholder "new value...", type_ "text" ]
+                        []
+                    , button [ class "button" ]
+                        [ text "Add" ]
+                    ]
+                , ul [ class "cp-layout-items-tag" ]
+                    [ li []
+                        [ text "UP" ]
+                    , li []
+                        [ text "LEFT" ]
+                    , li []
+                        [ text "RIGHT" ]
+                    , li []
+                        [ text "DOWN" ]
+                    ]
+                ]
+            , div []
                 []
+            , div []
+                []
+            , div []
+                [ div [ class "checkbox" ]
+                    [ label []
+                        [ input [ checked True, type_ "checkbox" ]
+                            []
+                        , span []
+                            []
+                        ]
+                    ]
+                ]
+            , div []
+                []
+            ]
 
 
 
@@ -333,12 +627,12 @@ type Msg
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
-update msg ({ columns } as model) =
+update msg ({ dbFields } as model) =
     case msg of
         UpdateBigIntFieldName idx fieldName ->
             ( { model
-                | columns =
-                    Array.update idx (updateBigIntFieldName fieldName) columns
+                | dbFields =
+                    Array.update idx (updateBigIntFieldName fieldName) dbFields
               }
             , Cmd.none
             )
@@ -350,9 +644,16 @@ update msg ({ columns } as model) =
 
 view : Model -> Browser.Document Msg
 view model =
+    let
+        { dbFields } =
+            model
+
+        dbFieldList =
+            Array.toList dbFields
+    in
     { title = "elm boilgen"
     , body =
-        [ div [ class "cp-layout-table" ]
+        [ div [ class "cp-layout-table" ] <|
             [ div []
                 [ text "Field" ]
             , div []
@@ -365,223 +666,8 @@ view model =
                 [ text "Not Null" ]
             , div []
                 [ text "Auto Increment" ]
-            , div []
-                [ input [ class "input", type_ "text", value "id" ]
-                    []
-                ]
-            , div []
-                [ div [ class "select" ]
-                    [ select []
-                        [ option []
-                            [ text "PRIMARY KEY" ]
-                        ]
-                    ]
-                ]
-            , div []
-                [ input [ class "input", type_ "number", value "20" ]
-                    []
-                ]
-            , div []
-                [ div [ class "checkbox" ]
-                    [ label []
-                        [ input [ attribute "checked" "", name "check1", type_ "checkbox" ]
-                            []
-                        , span []
-                            []
-                        ]
-                    ]
-                ]
-            , div []
-                [ div [ class "checkbox" ]
-                    [ label []
-                        [ input [ attribute "checked" "", name "check1", type_ "checkbox", checked True ]
-                            []
-                        , span []
-                            []
-                        ]
-                    ]
-                ]
-            , div []
-                [ div [ class "checkbox" ]
-                    [ label []
-                        [ input [ attribute "checked" "", name "check1", type_ "checkbox" ]
-                            []
-                        , span []
-                            []
-                        ]
-                    ]
-                ]
-            , div []
-                [ input [ class "input", type_ "text", value "hoge" ]
-                    []
-                ]
-            , div []
-                [ div [ class "select" ]
-                    [ select []
-                        [ option []
-                            [ text "BIGINT" ]
-                        ]
-                    ]
-                ]
-            , div []
-                [ input [ class "input", type_ "number", value "20" ]
-                    []
-                ]
-            , div []
-                [ div [ class "checkbox" ]
-                    [ label []
-                        [ input [ attribute "checked" "", name "check1", type_ "checkbox" ]
-                            []
-                        , span []
-                            []
-                        ]
-                    ]
-                ]
-            , div []
-                [ div [ class "checkbox" ]
-                    [ label []
-                        [ input [ attribute "checked" "", name "check1", type_ "checkbox" ]
-                            []
-                        , span []
-                            []
-                        ]
-                    ]
-                ]
-            , div []
-                []
-            , div []
-                [ input [ class "input", type_ "text", value "foo" ]
-                    []
-                ]
-            , div []
-                [ div [ class "select" ]
-                    [ select []
-                        [ option []
-                            [ text "VARCHAR" ]
-                        ]
-                    ]
-                ]
-            , div []
-                [ input [ class "input", type_ "text", value "100" ]
-                    []
-                ]
-            , div []
-                []
-            , div []
-                [ div [ class "checkbox" ]
-                    [ label []
-                        [ input [ attribute "checked" "", name "check1", type_ "checkbox" ]
-                            []
-                        , span []
-                            []
-                        ]
-                    ]
-                ]
-            , div []
-                []
-            , div []
-                [ input [ class "input", type_ "text", value "flag" ]
-                    []
-                ]
-            , div []
-                [ div [ class "select" ]
-                    [ select []
-                        [ option []
-                            [ text "BOOLEAN" ]
-                        ]
-                    ]
-                ]
-            , div []
-                []
-            , div []
-                []
-            , div []
-                [ div [ class "checkbox" ]
-                    [ label []
-                        [ input [ attribute "checked" "", name "check1", type_ "checkbox" ]
-                            []
-                        , span []
-                            []
-                        ]
-                    ]
-                ]
-            , div []
-                []
-            , div []
-                [ input [ class "input", type_ "text", value "time" ]
-                    []
-                ]
-            , div []
-                [ div [ class "select" ]
-                    [ select []
-                        [ option []
-                            [ text "DATETIME" ]
-                        ]
-                    ]
-                ]
-            , div []
-                [ input [ class "input", type_ "text", value "6" ]
-                    []
-                ]
-            , div []
-                []
-            , div []
-                [ div [ class "checkbox" ]
-                    [ label []
-                        [ input [ attribute "checked" "", name "check1", type_ "checkbox" ]
-                            []
-                        , span []
-                            []
-                        ]
-                    ]
-                ]
-            , div []
-                []
-            , div []
-                [ input [ class "input", type_ "text", value "hoge_status" ]
-                    []
-                ]
-            , div [ class "enum" ]
-                [ div [ class "layout-enum" ]
-                    [ div [ class "select" ]
-                        [ select []
-                            [ option []
-                                [ text "ENUM" ]
-                            ]
-                        ]
-                    , input [ class "input", placeholder "new value...", type_ "text" ]
-                        []
-                    , button [ class "button" ]
-                        [ text "Add" ]
-                    ]
-                , ul [ class "cp-layout-items-tag" ]
-                    [ li []
-                        [ text "UP" ]
-                    , li []
-                        [ text "LEFT" ]
-                    , li []
-                        [ text "RIGHT" ]
-                    , li []
-                        [ text "DOWN" ]
-                    ]
-                ]
-            , div []
-                []
-            , div []
-                []
-            , div []
-                [ div [ class "checkbox" ]
-                    [ label []
-                        [ input [ attribute "checked" "", name "check1", type_ "checkbox" ]
-                            []
-                        , span []
-                            []
-                        ]
-                    ]
-                ]
-            , div []
-                []
             ]
+                ++ List.concatMap dbFieldToView dbFieldList
         ]
     }
 

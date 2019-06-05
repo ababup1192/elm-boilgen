@@ -63,7 +63,6 @@ body {
   margin-top: -20px;
  }
 
-
 .checkbox .label_list:nth-of-type(1) label input[type="checkbox"] + span::before {
   border-color: #00acc1;
 }
@@ -78,7 +77,14 @@ body {
 }
 .checkbox label span {
   display: inline-block;
+  cursor: pointer;
+
+  &.disabled {
+    cursor: default;
+
+  }
 }
+
 .checkbox label input[type="checkbox"] {
   position: absolute;
   top: 0;
