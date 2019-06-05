@@ -13,6 +13,7 @@ module Main exposing
 import Array exposing (Array)
 import Array.Extra as Array
 import Browser
+import File.Download as Download
 import Html exposing (..)
 import Html.Attributes exposing (..)
 import Html.Events exposing (..)
@@ -25,12 +26,12 @@ import Task as Task
 
 
 type alias Model =
-    { dbFields : Array DbField }
+    { tableName : String, dbFields : Array DbField }
 
 
 init : () -> ( Model, Cmd Msg )
 init _ =
-    ( Model <|
+    ( Model "" <|
         Array.fromList
             [ PrimaryKey "id"
             , BigInt
@@ -621,8 +622,11 @@ type alias Index =
 
 
 type Msg
-    = UpdateBigIntFieldName Index String
+    = UpdateTableName String
+    | UpdateBigIntFieldName Index String
     | AddDbField
+    | DownloadDDL
+    | DownloadInsertStatement
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
@@ -632,6 +636,9 @@ update msg model =
             model
     in
     case msg of
+        UpdateTableName tableName ->
+            ( { model | tableName = tableName }, Cmd.none )
+
         UpdateBigIntFieldName idx fieldName ->
             ( { model
                 | dbFields =
@@ -650,6 +657,12 @@ update msg model =
             , Cmd.none
             )
 
+        DownloadDDL ->
+            ( model, Download.string "tables.sql" "text/plain" <| dbFieldArrayToDDL dbFields )
+
+        DownloadInsertStatement ->
+            ( model, Download.string "TableInsert.java" "text/plain" <| dbFieldArrayToInsertMethod "tables" dbFields )
+
 
 
 ---- VIEW ----
@@ -666,7 +679,17 @@ view model =
     in
     { title = "elm boilgen"
     , body =
-        [ div [ class "cp-layout-table" ] <|
+        [ div [ class "downloads" ]
+            [ button [ class "button is-primary", onClick DownloadDDL ] [ text "DDL" ]
+            , button [ class "button is-primary", onClick DownloadInsertStatement ] [ text "Insert Statement" ]
+            ]
+        , div [ class "field" ]
+            [ div [ class "control" ]
+                [ input [ class "input is-primary", placeholder "Input table name", type_ "text", onInput UpdateTableName ]
+                    []
+                ]
+            ]
+        , div [ class "cp-layout-table" ] <|
             [ div []
                 [ text "Field" ]
             , div []
