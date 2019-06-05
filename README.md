@@ -1,10 +1,10 @@
-# elm startfighter
+# elm boilerplate generator
 
 ## Installation
 
 ```
-$ git clone git@github.com:ababup1192/elm-starfighter.git
-$ cd elm-startfighter
+$ git clone git@github.com:ababup1192/elm-boilgen.git
+$ cd elm-boilgen
 $ npm install
 $ npm start
 ```
@@ -18,7 +18,7 @@ $ npm run build
 
 ## Netlify
 
-[demo](https://elm-starfighter-abab.netlify.com)
+[demo](https://elm-boilgen-abab.netlify.com)
 
 ### Build command
 
