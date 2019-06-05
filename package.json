@@ -1,0 +1,28 @@
+{
+  "scripts": {
+    "copy:html": "ncp ./src/index.html ./out/index.html",
+    "copy:js": "ncp ./src/main.js ./out/main.js",
+    "copy:assets": "ncp ./src/assets ./out/assets",
+    "copy:bulma": "ncp ./node_modules/bulma/css/bulma.min.css ./out/assets/bulma.min.css",
+    "copy": "mkdirp out && npm-run-all -p copy:*",
+    "watch:elm": "elm-live ./src/Main.elm --open --start-page=index.html --dir=out -- --output=./out/elm.js --debug",
+    "watch:sass": "npm run build:sass && node-sass -w --include-path scss ./src/style.scss ./out/style.css",
+    "watch": "npm-run-all -p watch:*",
+    "start": "npm-run-all -s copy watch",
+    "test": "elm-test",
+    "build:elm": "elm make src/Main.elm --output=./out/elm.js",
+    "build:sass": "node-sass --include-path scss ./src/style.scss ./out/style.css",
+    "build-all": "npm-run-all -p build:*",
+    "build": "npm-run-all -s copy build-all"
+  },
+  "devDependencies": {
+    "browser-sync": "^2.26.5",
+    "bulma": "^0.7.5",
+    "elm": "^0.19.0-no-deps",
+    "elm-live": "^3.4.1",
+    "elm-test": "^0.19.0-rev6",
+    "ncp": "^2.0.0",
+    "node-sass": "^4.12.0",
+    "npm-run-all": "^4.1.5"
+  }
+}

@@ -1,0 +1,119 @@
+body {
+  padding: 20px;
+}
+
+.cp-layout-table {
+  display: grid;
+  grid-template-columns: 150px 2fr 200px 75px 75px 75px;
+  margin: 30px 0;
+  border-bottom: 1px solid black;
+  border-left: 1px solid black;
+}
+
+.cp-layout-table > * {
+  display: flex;
+  align-items: center;
+  padding: 12px 8px;
+  font-size: 14px;
+  line-height: 1.5;
+  border-top: 1px solid black;
+  border-right: 1px solid black;
+}
+
+.cp-layout-items-tag {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-start;
+  padding: 0;
+  margin: 30px 0;
+  list-style: none;
+  cursor: pointer;
+}
+
+.cp-layout-items-tag > * {
+  display: flex;
+  justify-content: flex-start; padding: 5px 8px;
+  margin: 5px 15px 5px 0;
+  border: 1px solid #999;
+  border-radius: 3px;
+}
+
+.enum {
+  display: flex;
+  flex-direction: column;
+
+  .layout-enum {
+    display: flex;
+    flex-direction: row;
+    width: 100%;
+
+    input {
+      margin: 0 20px;
+    }
+
+    > div {
+      display: flex;
+    }
+  }
+}
+
+.add-column {
+  display: flex;
+  justify-content: center;
+  margin-top: -20px;
+ }
+
+
+.checkbox .label_list:nth-of-type(1) label input[type="checkbox"] + span::before {
+  border-color: #00acc1;
+}
+.checkbox .label_list:nth-of-type(1) label input[type="checkbox"]:checked + span::before {
+  background-color: #00acc1;
+}
+.checkbox .label_list:nth-of-type(2) label input[type="checkbox"] + span::before {
+  border-color: #ec407a;
+}
+.checkbox .label_list:nth-of-type(2) label input[type="checkbox"]:checked + span::before {
+  background-color: #ec407a;
+}
+.checkbox label span {
+  display: inline-block;
+}
+.checkbox label input[type="checkbox"] {
+  position: absolute;
+  top: 0;
+  left: 0;
+  opacity: 0;
+}
+.checkbox label input[type="checkbox"] + span::before, .checkbox label input[type="checkbox"] + span::after {
+  position: absolute;
+  top: 0;
+  left: 0;
+  display: inline-block;
+  content: '';
+  box-sizing: border-box;
+}
+.checkbox label input[type="checkbox"] + span::before {
+  z-index: 0;
+  background-color: transparent;
+  width: 22px;
+  height: 22px;
+  border: 2px #616161 solid;
+  border-radius: 5px;
+}
+.checkbox label input[type="checkbox"] + span::after {
+  z-index: 1;
+  margin: 5px 8px;
+  width: 6px;
+  height: 9px;
+}
+.checkbox label input[type="checkbox"]:checked + span::before {
+  background-color: #616161;
+}
+.checkbox label input[type="checkbox"]:checked + span::after {
+  border: 2px solid #fff;
+  border-width: 0 2px 2px 0;
+  -webkit-transform: rotate(45deg);
+      -ms-transform: rotate(45deg);
+          transform: rotate(45deg);
+}
