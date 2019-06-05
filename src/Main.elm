@@ -15,6 +15,7 @@ import Array.Extra as Array
 import Browser
 import Html exposing (..)
 import Html.Attributes exposing (..)
+import Html.Events exposing (..)
 import String.Interpolate exposing (interpolate)
 import Task as Task
 
@@ -450,13 +451,13 @@ dbFieldToView dbField =
                 [ fieldTypeSelectView dbField
                 ]
             , div []
-                [ input [ class "input", type_ "number", value "20" ]
+                [ input [ class "input", type_ "number", value <| String.fromInt fieldLength ]
                     []
                 ]
             , div []
                 [ div [ class "checkbox" ]
                     [ label []
-                        [ input [ checked True, type_ "checkbox" ]
+                        [ input [ checked isUnsigned, type_ "checkbox" ]
                             []
                         , span []
                             []
@@ -466,7 +467,7 @@ dbFieldToView dbField =
             , div []
                 [ div [ class "checkbox" ]
                     [ label []
-                        [ input [ checked True, type_ "checkbox" ]
+                        [ input [ checked isNotNull, type_ "checkbox" ]
                             []
                         , span []
                             []
@@ -486,7 +487,7 @@ dbFieldToView dbField =
                 [ fieldTypeSelectView dbField
                 ]
             , div []
-                [ input [ class "input", type_ "text", value "100" ]
+                [ input [ class "input", type_ "text", value <| String.fromInt fieldLength ]
                     []
                 ]
             , div []
@@ -494,7 +495,7 @@ dbFieldToView dbField =
             , div []
                 [ div [ class "checkbox" ]
                     [ label []
-                        [ input [ checked True, type_ "checkbox" ]
+                        [ input [ checked isNotNull, type_ "checkbox" ]
                             []
                         , span []
                             []
@@ -520,7 +521,7 @@ dbFieldToView dbField =
             , div []
                 [ div [ class "checkbox" ]
                     [ label []
-                        [ input [ checked True, type_ "checkbox" ]
+                        [ input [ checked isNotNull, type_ "checkbox" ]
                             []
                         , span []
                             []
@@ -540,7 +541,7 @@ dbFieldToView dbField =
                 [ fieldTypeSelectView dbField
                 ]
             , div []
-                [ input [ class "input", type_ "text", value "6" ]
+                [ input [ class "input", readonly True, type_ "text", value "6" ]
                     []
                 ]
             , div []
@@ -548,7 +549,7 @@ dbFieldToView dbField =
             , div []
                 [ div [ class "checkbox" ]
                     [ label []
-                        [ input [ checked True, type_ "checkbox" ]
+                        [ input [ checked isNotNull, type_ "checkbox" ]
                             []
                         , span []
                             []
@@ -572,16 +573,13 @@ dbFieldToView dbField =
                     , button [ class "button" ]
                         [ text "Add" ]
                     ]
-                , ul [ class "cp-layout-items-tag" ]
-                    [ li []
-                        [ text "UP" ]
-                    , li []
-                        [ text "LEFT" ]
-                    , li []
-                        [ text "RIGHT" ]
-                    , li []
-                        [ text "DOWN" ]
-                    ]
+                , ul [ class "cp-layout-items-tag" ] <|
+                    List.map
+                        (\v ->
+                            li []
+                                [ text v ]
+                        )
+                        values
                 ]
             , div []
                 []
@@ -590,7 +588,7 @@ dbFieldToView dbField =
             , div []
                 [ div [ class "checkbox" ]
                     [ label []
-                        [ input [ checked True, type_ "checkbox" ]
+                        [ input [ checked isNotNull, type_ "checkbox" ]
                             []
                         , span []
                             []
@@ -624,15 +622,30 @@ type alias Index =
 
 type Msg
     = UpdateBigIntFieldName Index String
+    | AddDbField
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
-update msg ({ dbFields } as model) =
+update msg model =
+    let
+        { dbFields } =
+            model
+    in
     case msg of
         UpdateBigIntFieldName idx fieldName ->
             ( { model
                 | dbFields =
                     Array.update idx (updateBigIntFieldName fieldName) dbFields
+              }
+            , Cmd.none
+            )
+
+        AddDbField ->
+            ( { model
+                | dbFields =
+                    Array.push
+                        (BigInt { fieldName = "", fieldLength = 5, isUnsigned = False, isNotNull = True })
+                        dbFields
               }
             , Cmd.none
             )
@@ -668,6 +681,9 @@ view model =
                 [ text "Auto Increment" ]
             ]
                 ++ List.concatMap dbFieldToView dbFieldList
+        , div [ class "add-column" ]
+            [ span [ class "button is-success", onClick AddDbField ] [ text "+" ]
+            ]
         ]
     }
 
