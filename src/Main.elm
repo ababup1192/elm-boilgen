@@ -35,44 +35,14 @@ init _ =
         Array.fromList
             [ PrimaryKey "id"
             , BigInt
-                { fieldName = "hoge"
+                { fieldName = "bigint"
                 , fieldLength = 20
                 , isUnsigned = True
                 , isNotNull = True
                 }
-            , BigInt
-                { fieldName = "foo"
-                , fieldLength = 5
-                , isUnsigned = False
-                , isNotNull = True
-                }
-            , BigInt
-                { fieldName = "bar"
-                , fieldLength = 10
-                , isUnsigned = False
-                , isNotNull = False
-                }
             , VarChar
-                { fieldName = "aaa"
+                { fieldName = "text"
                 , fieldLength = 10
-                , isNotNull = True
-                }
-            , VarChar
-                { fieldName = "bbb"
-                , fieldLength = 20
-                , isNotNull = False
-                }
-            , Boolean
-                { fieldName = "bool"
-                , isNotNull = True
-                }
-            , Datetime
-                { fieldName = "dt"
-                , isNotNull = True
-                }
-            , Enum
-                { fieldName = "enm"
-                , values = [ "DEFAULT", "FIRST", "SECOND" ]
                 , isNotNull = True
                 }
             ]
@@ -80,8 +50,31 @@ init _ =
     )
 
 
-{-| -TODO: FK制約を増やす。 UI込み -
--}
+initBigint : DbField
+initBigint =
+    BigInt { fieldName = "", fieldLength = 5, isUnsigned = False, isNotNull = True }
+
+
+initVarchar : DbField
+initVarchar =
+    VarChar { fieldName = "", fieldLength = 5, isNotNull = True }
+
+
+initBoolean : DbField
+initBoolean =
+    Boolean { fieldName = "", isNotNull = True }
+
+
+initDatetime : DbField
+initDatetime =
+    Datetime { fieldName = "", isNotNull = True }
+
+
+initEnum : DbField
+initEnum =
+    Enum { fieldName = "", values = [], isNotNull = True }
+
+
 type alias BigInt_ =
     { fieldName : String
     , fieldLength : Int
@@ -304,8 +297,8 @@ dbFieldToFormatString dbField =
             "%s"
 
 
-dbFieldArrayToDDL : Array DbField -> String
-dbFieldArrayToDDL dbFieldArray =
+dbFieldArrayToDDL : String -> Array DbField -> String
+dbFieldArrayToDDL tableName dbFieldArray =
     let
         primaryTextArray =
             dbFieldArray
@@ -331,7 +324,7 @@ dbFieldArrayToDDL dbFieldArray =
                 |> Array.toList
                 |> String.join ",\n\t"
     in
-    "CREATE TABLE `table` (\n\t" ++ fieldTexts ++ "\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;"
+    "CREATE TABLE `" ++ tableName ++ "` (\n\t" ++ fieldTexts ++ "\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;"
 
 
 dbFieldArrayToInsertMethod : String -> Array DbField -> String
@@ -376,6 +369,194 @@ dbFieldArrayToInsertMethod tableName dbFieldArray =
         ]
 
 
+
+---- UPDATE ----
+
+
+updatePrimaryKeyFieldName : String -> DbField -> DbField
+updatePrimaryKeyFieldName fieldName dbField =
+    case dbField of
+        PrimaryKey _ ->
+            PrimaryKey fieldName
+
+        _ ->
+            dbField
+
+
+updateBigIntFieldName : String -> DbField -> DbField
+updateBigIntFieldName fieldName dbField =
+    case dbField of
+        BigInt bigInt ->
+            BigInt { bigInt | fieldName = fieldName }
+
+        _ ->
+            dbField
+
+
+updateBigIntTurnUnsigned : DbField -> DbField
+updateBigIntTurnUnsigned dbField =
+    case dbField of
+        BigInt bigInt ->
+            BigInt { bigInt | isUnsigned = not bigInt.isUnsigned }
+
+        _ ->
+            dbField
+
+
+updateBigIntTurnNotNull : DbField -> DbField
+updateBigIntTurnNotNull dbField =
+    case dbField of
+        BigInt bigInt ->
+            BigInt { bigInt | isNotNull = not bigInt.isNotNull }
+
+        _ ->
+            dbField
+
+
+updateVarcharFieldName : String -> DbField -> DbField
+updateVarcharFieldName fieldName dbField =
+    case dbField of
+        VarChar varchar ->
+            VarChar { varchar | fieldName = fieldName }
+
+        _ ->
+            dbField
+
+
+updateVarcharTurnNotNull : DbField -> DbField
+updateVarcharTurnNotNull dbField =
+    case dbField of
+        VarChar varchar ->
+            VarChar { varchar | isNotNull = varchar.isNotNull }
+
+        _ ->
+            dbField
+
+
+updateBooleanFieldName : String -> DbField -> DbField
+updateBooleanFieldName fieldName dbField =
+    case dbField of
+        Boolean boolean ->
+            Boolean { boolean | fieldName = fieldName }
+
+        _ ->
+            dbField
+
+
+updateDatetimeFieldName : String -> DbField -> DbField
+updateDatetimeFieldName fieldName dbField =
+    case dbField of
+        Datetime dtime ->
+            Datetime { dtime | fieldName = fieldName }
+
+        _ ->
+            dbField
+
+
+updateEnumFieldName : String -> DbField -> DbField
+updateEnumFieldName fieldName dbField =
+    case dbField of
+        Enum enum ->
+            Enum { enum | fieldName = fieldName }
+
+        _ ->
+            dbField
+
+
+type alias Index =
+    Int
+
+
+type Msg
+    = UpdateTableName String
+    | UpdatePrimaryKeyFieldName Index String
+    | UpdateBigIntFieldName Index String
+    | UpdateVarCharFieldName Index String
+    | UpdateBooleanFieldName Index String
+    | UpdateDatetimeFieldName Index String
+    | UpdateEnumFieldName Index String
+    | AddDbField
+    | DownloadDDL
+    | DownloadInsertStatement
+
+
+update : Msg -> Model -> ( Model, Cmd Msg )
+update msg model =
+    let
+        { tableName, dbFields } =
+            model
+    in
+    case msg of
+        UpdateTableName tname ->
+            ( { model | tableName = tname }, Cmd.none )
+
+        UpdatePrimaryKeyFieldName idx fieldName ->
+            ( { model
+                | dbFields =
+                    Array.update idx (updatePrimaryKeyFieldName fieldName) dbFields
+              }
+            , Cmd.none
+            )
+
+        UpdateBigIntFieldName idx fieldName ->
+            ( { model
+                | dbFields =
+                    Array.update idx (updateBigIntFieldName fieldName) dbFields
+              }
+            , Cmd.none
+            )
+
+        UpdateVarCharFieldName idx fieldName ->
+            ( { model
+                | dbFields =
+                    Array.update idx (updateVarcharFieldName fieldName) dbFields
+              }
+            , Cmd.none
+            )
+
+        UpdateBooleanFieldName idx fieldName ->
+            ( { model
+                | dbFields =
+                    Array.update idx (updateBooleanFieldName fieldName) dbFields
+              }
+            , Cmd.none
+            )
+
+        UpdateDatetimeFieldName idx fieldName ->
+            ( { model
+                | dbFields =
+                    Array.update idx (updateDatetimeFieldName fieldName) dbFields
+              }
+            , Cmd.none
+            )
+
+        UpdateEnumFieldName idx fieldName ->
+            ( { model
+                | dbFields =
+                    Array.update idx (updateEnumFieldName fieldName) dbFields
+              }
+            , Cmd.none
+            )
+
+        AddDbField ->
+            ( { model
+                | dbFields =
+                    Array.push initBigint dbFields
+              }
+            , Cmd.none
+            )
+
+        DownloadDDL ->
+            ( model, Download.string (tableName ++ ".sql") "text/plain" <| dbFieldArrayToDDL tableName dbFields )
+
+        DownloadInsertStatement ->
+            ( model, Download.string (tableName ++ ".java") "text/plain" <| dbFieldArrayToInsertMethod tableName dbFields )
+
+
+
+---- VIEW ----
+
+
 fieldTypeSelectView : DbField -> Html Msg
 fieldTypeSelectView dbField =
     div [ class "select" ]
@@ -396,12 +577,12 @@ fieldTypeSelectView dbField =
         ]
 
 
-dbFieldToView : DbField -> List (Html Msg)
-dbFieldToView dbField =
+dbFieldToView : Int -> DbField -> List (Html Msg)
+dbFieldToView idx dbField =
     case dbField of
         PrimaryKey fieldName ->
             [ div []
-                [ input [ class "input", type_ "text", value fieldName ]
+                [ input [ class "input", type_ "text", value fieldName, onInput <| UpdatePrimaryKeyFieldName idx ]
                     []
                 ]
             , div []
@@ -445,7 +626,7 @@ dbFieldToView dbField =
 
         BigInt { fieldName, fieldLength, isUnsigned, isNotNull } ->
             [ div []
-                [ input [ class "input", type_ "text", value fieldName ]
+                [ input [ class "input", type_ "text", value fieldName, onInput <| UpdateBigIntFieldName idx ]
                     []
                 ]
             , div []
@@ -481,7 +662,7 @@ dbFieldToView dbField =
 
         VarChar { fieldName, fieldLength, isNotNull } ->
             [ div []
-                [ input [ class "input", type_ "text", value fieldName ]
+                [ input [ class "input", type_ "text", value fieldName, onInput <| UpdateVarCharFieldName idx ]
                     []
                 ]
             , div []
@@ -535,7 +716,7 @@ dbFieldToView dbField =
 
         Datetime { fieldName, isNotNull } ->
             [ div []
-                [ input [ class "input", type_ "text", value fieldName ]
+                [ input [ class "input", type_ "text", value fieldName, onInput <| UpdateVarCharFieldName idx ]
                     []
                 ]
             , div []
@@ -563,7 +744,7 @@ dbFieldToView dbField =
 
         Enum { fieldName, values, isNotNull } ->
             [ div []
-                [ input [ class "input", type_ "text", value fieldName ]
+                [ input [ class "input", type_ "text", value fieldName, onInput <| UpdateEnumFieldName idx ]
                     []
                 ]
             , div [ class "enum" ]
@@ -601,73 +782,6 @@ dbFieldToView dbField =
             ]
 
 
-
----- UPDATE ----
-
-
-{-| -TODO: ひたすらに、DbField種類の各値の変更Msgと関数を増やしていく -
--}
-updateBigIntFieldName : String -> DbField -> DbField
-updateBigIntFieldName fieldName dbField =
-    case dbField of
-        BigInt bigInt ->
-            BigInt { bigInt | fieldName = fieldName }
-
-        _ ->
-            dbField
-
-
-type alias Index =
-    Int
-
-
-type Msg
-    = UpdateTableName String
-    | UpdateBigIntFieldName Index String
-    | AddDbField
-    | DownloadDDL
-    | DownloadInsertStatement
-
-
-update : Msg -> Model -> ( Model, Cmd Msg )
-update msg model =
-    let
-        { dbFields } =
-            model
-    in
-    case msg of
-        UpdateTableName tableName ->
-            ( { model | tableName = tableName }, Cmd.none )
-
-        UpdateBigIntFieldName idx fieldName ->
-            ( { model
-                | dbFields =
-                    Array.update idx (updateBigIntFieldName fieldName) dbFields
-              }
-            , Cmd.none
-            )
-
-        AddDbField ->
-            ( { model
-                | dbFields =
-                    Array.push
-                        (BigInt { fieldName = "", fieldLength = 5, isUnsigned = False, isNotNull = True })
-                        dbFields
-              }
-            , Cmd.none
-            )
-
-        DownloadDDL ->
-            ( model, Download.string "tables.sql" "text/plain" <| dbFieldArrayToDDL dbFields )
-
-        DownloadInsertStatement ->
-            ( model, Download.string "TableInsert.java" "text/plain" <| dbFieldArrayToInsertMethod "tables" dbFields )
-
-
-
----- VIEW ----
-
-
 view : Model -> Browser.Document Msg
 view model =
     let
@@ -703,7 +817,7 @@ view model =
             , div []
                 [ text "Auto Increment" ]
             ]
-                ++ List.concatMap dbFieldToView dbFieldList
+                ++ (dbFieldList |> List.indexedMap Tuple.pair |> List.concatMap (\( idx, dbField ) -> dbFieldToView idx dbField))
         , div [ class "add-column" ]
             [ span [ class "button is-success", onClick AddDbField ] [ text "+" ]
             ]
