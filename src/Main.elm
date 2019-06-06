@@ -320,7 +320,17 @@ dbFieldArrayToDDL tableName dbFieldArray =
                 |> Maybe.withDefault Array.empty
 
         fieldTextArray =
-            dbFieldArray
+            (Array.append
+                dbFieldArray
+             <|
+                Array.fromList
+                    [ Datetime { fieldName = "created_at", isNotNull = True }
+                    , BigInt { fieldName = "created_by", fieldLength = 20, isUnsigned = True, isNotNull = True }
+                    , Datetime { fieldName = "updated_at", isNotNull = True }
+                    , BigInt { fieldName = "updated_by", fieldLength = 20, isUnsigned = True, isNotNull = True }
+                    , BigInt { fieldName = "version_no", fieldLength = 20, isUnsigned = True, isNotNull = True }
+                    ]
+            )
                 |> Array.map dbFieldToDDL
 
         fieldTexts =
