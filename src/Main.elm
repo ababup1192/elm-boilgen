@@ -413,6 +413,20 @@ updateBigIntTurnNotNull dbField =
             dbField
 
 
+updateBigIntLength : String -> DbField -> DbField
+updateBigIntLength lenText dbField =
+    case dbField of
+        BigInt bigInt ->
+            BigInt
+                { bigInt
+                    | fieldLength =
+                        Maybe.withDefault bigInt.fieldLength <| String.toInt lenText
+                }
+
+        _ ->
+            dbField
+
+
 updateVarcharFieldName : String -> DbField -> DbField
 updateVarcharFieldName fieldName dbField =
     case dbField of
@@ -427,7 +441,21 @@ updateVarcharTurnNotNull : DbField -> DbField
 updateVarcharTurnNotNull dbField =
     case dbField of
         VarChar varchar ->
-            VarChar { varchar | isNotNull = varchar.isNotNull }
+            VarChar { varchar | isNotNull = not varchar.isNotNull }
+
+        _ ->
+            dbField
+
+
+updateVarcharLength : String -> DbField -> DbField
+updateVarcharLength lenText dbField =
+    case dbField of
+        VarChar varchar ->
+            VarChar
+                { varchar
+                    | fieldLength =
+                        Maybe.withDefault varchar.fieldLength <| String.toInt lenText
+                }
 
         _ ->
             dbField
@@ -443,11 +471,31 @@ updateBooleanFieldName fieldName dbField =
             dbField
 
 
+updateBooleanTurnNotNull : DbField -> DbField
+updateBooleanTurnNotNull dbField =
+    case dbField of
+        Boolean boolean ->
+            Boolean { boolean | isNotNull = not boolean.isNotNull }
+
+        _ ->
+            dbField
+
+
 updateDatetimeFieldName : String -> DbField -> DbField
 updateDatetimeFieldName fieldName dbField =
     case dbField of
         Datetime dtime ->
             Datetime { dtime | fieldName = fieldName }
+
+        _ ->
+            dbField
+
+
+updateDatetimeTurnNotNull : DbField -> DbField
+updateDatetimeTurnNotNull dbField =
+    case dbField of
+        Datetime datetime ->
+            Datetime { datetime | isNotNull = not datetime.isNotNull }
 
         _ ->
             dbField
@@ -463,6 +511,16 @@ updateEnumFieldName fieldName dbField =
             dbField
 
 
+updateEnumTurnNotNull : DbField -> DbField
+updateEnumTurnNotNull dbField =
+    case dbField of
+        Enum enum ->
+            Enum { enum | isNotNull = not enum.isNotNull }
+
+        _ ->
+            dbField
+
+
 type alias Index =
     Int
 
@@ -471,10 +529,18 @@ type Msg
     = UpdateTableName String
     | UpdatePrimaryKeyFieldName Index String
     | UpdateBigIntFieldName Index String
-    | UpdateVarCharFieldName Index String
+    | UpdateVarcharFieldName Index String
     | UpdateBooleanFieldName Index String
     | UpdateDatetimeFieldName Index String
     | UpdateEnumFieldName Index String
+    | UpdateBigIntTurnUnsigned Index
+    | UpdateBigIntTurnNotNull Index
+    | UpdateVarcharTurnNotNull Index
+    | UpdateBooleanTurnNotNull Index
+    | UpdateDatetimeTurnNotNull Index
+    | UpdateEnumTurnNotNull Index
+    | UpdateBigIntLength Index String
+    | UpdateVarcharLength Index String
     | AddDbField
     | DownloadDDL
     | DownloadInsertStatement
@@ -506,7 +572,7 @@ update msg model =
             , Cmd.none
             )
 
-        UpdateVarCharFieldName idx fieldName ->
+        UpdateVarcharFieldName idx fieldName ->
             ( { model
                 | dbFields =
                     Array.update idx (updateVarcharFieldName fieldName) dbFields
@@ -534,6 +600,70 @@ update msg model =
             ( { model
                 | dbFields =
                     Array.update idx (updateEnumFieldName fieldName) dbFields
+              }
+            , Cmd.none
+            )
+
+        UpdateBigIntTurnUnsigned idx ->
+            ( { model
+                | dbFields =
+                    Array.update idx updateBigIntTurnUnsigned dbFields
+              }
+            , Cmd.none
+            )
+
+        UpdateBigIntTurnNotNull idx ->
+            ( { model
+                | dbFields =
+                    Array.update idx updateBigIntTurnNotNull dbFields
+              }
+            , Cmd.none
+            )
+
+        UpdateVarcharTurnNotNull idx ->
+            ( { model
+                | dbFields =
+                    Array.update idx updateVarcharTurnNotNull dbFields
+              }
+            , Cmd.none
+            )
+
+        UpdateBooleanTurnNotNull idx ->
+            ( { model
+                | dbFields =
+                    Array.update idx updateBooleanTurnNotNull dbFields
+              }
+            , Cmd.none
+            )
+
+        UpdateDatetimeTurnNotNull idx ->
+            ( { model
+                | dbFields =
+                    Array.update idx updateDatetimeTurnNotNull dbFields
+              }
+            , Cmd.none
+            )
+
+        UpdateEnumTurnNotNull idx ->
+            ( { model
+                | dbFields =
+                    Array.update idx updateEnumTurnNotNull dbFields
+              }
+            , Cmd.none
+            )
+
+        UpdateBigIntLength idx lengthText ->
+            ( { model
+                | dbFields =
+                    Array.update idx (updateBigIntLength lengthText) dbFields
+              }
+            , Cmd.none
+            )
+
+        UpdateVarcharLength idx lengthText ->
+            ( { model
+                | dbFields =
+                    Array.update idx (updateVarcharLength lengthText) dbFields
               }
             , Cmd.none
             )
@@ -633,13 +763,13 @@ dbFieldToView idx dbField =
                 [ fieldTypeSelectView dbField
                 ]
             , div []
-                [ input [ class "input", type_ "number", value <| String.fromInt fieldLength ]
+                [ input [ class "input", type_ "number", value <| String.fromInt fieldLength, onInput <| UpdateBigIntLength idx ]
                     []
                 ]
             , div []
                 [ div [ class "checkbox" ]
                     [ label []
-                        [ input [ checked isUnsigned, type_ "checkbox" ]
+                        [ input [ checked isUnsigned, type_ "checkbox", onClick <| UpdateBigIntTurnUnsigned idx ]
                             []
                         , span []
                             []
@@ -649,7 +779,7 @@ dbFieldToView idx dbField =
             , div []
                 [ div [ class "checkbox" ]
                     [ label []
-                        [ input [ checked isNotNull, type_ "checkbox" ]
+                        [ input [ checked isNotNull, type_ "checkbox", onClick <| UpdateBigIntTurnNotNull idx ]
                             []
                         , span []
                             []
@@ -662,14 +792,14 @@ dbFieldToView idx dbField =
 
         VarChar { fieldName, fieldLength, isNotNull } ->
             [ div []
-                [ input [ class "input", type_ "text", value fieldName, onInput <| UpdateVarCharFieldName idx ]
+                [ input [ class "input", type_ "text", value fieldName, onInput <| UpdateVarcharFieldName idx ]
                     []
                 ]
             , div []
                 [ fieldTypeSelectView dbField
                 ]
             , div []
-                [ input [ class "input", type_ "text", value <| String.fromInt fieldLength ]
+                [ input [ class "input", type_ "number", value <| String.fromInt fieldLength, onInput <| UpdateVarcharLength idx ]
                     []
                 ]
             , div []
@@ -677,7 +807,7 @@ dbFieldToView idx dbField =
             , div []
                 [ div [ class "checkbox" ]
                     [ label []
-                        [ input [ checked isNotNull, type_ "checkbox" ]
+                        [ input [ checked isNotNull, type_ "checkbox", onClick <| UpdateVarcharTurnNotNull idx ]
                             []
                         , span []
                             []
@@ -690,7 +820,7 @@ dbFieldToView idx dbField =
 
         Boolean { fieldName, isNotNull } ->
             [ div []
-                [ input [ class "input", type_ "text", value fieldName ]
+                [ input [ class "input", type_ "text", value fieldName, onInput <| UpdateBooleanFieldName idx ]
                     []
                 ]
             , div []
@@ -703,7 +833,7 @@ dbFieldToView idx dbField =
             , div []
                 [ div [ class "checkbox" ]
                     [ label []
-                        [ input [ checked isNotNull, type_ "checkbox" ]
+                        [ input [ checked isNotNull, type_ "checkbox", onClick <| UpdateBooleanTurnNotNull idx ]
                             []
                         , span []
                             []
@@ -716,7 +846,7 @@ dbFieldToView idx dbField =
 
         Datetime { fieldName, isNotNull } ->
             [ div []
-                [ input [ class "input", type_ "text", value fieldName, onInput <| UpdateVarCharFieldName idx ]
+                [ input [ class "input", type_ "text", value fieldName, onInput <| UpdateDatetimeFieldName idx ]
                     []
                 ]
             , div []
@@ -731,7 +861,7 @@ dbFieldToView idx dbField =
             , div []
                 [ div [ class "checkbox" ]
                     [ label []
-                        [ input [ checked isNotNull, type_ "checkbox" ]
+                        [ input [ checked isNotNull, type_ "checkbox", onClick <| UpdateDatetimeTurnNotNull idx ]
                             []
                         , span []
                             []
@@ -770,7 +900,7 @@ dbFieldToView idx dbField =
             , div []
                 [ div [ class "checkbox" ]
                     [ label []
-                        [ input [ checked isNotNull, type_ "checkbox" ]
+                        [ input [ checked isNotNull, type_ "checkbox", onClick <| UpdateEnumTurnNotNull idx ]
                             []
                         , span []
                             []
