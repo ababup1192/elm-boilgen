@@ -866,24 +866,10 @@ dbFieldToView idx newEnumValue dbField =
                     []
                 ]
             , div []
-                [ div [ class "checkbox" ]
-                    [ label []
-                        [ input [ checked isUnsigned, type_ "checkbox", onClick <| UpdateBigIntTurnUnsigned idx ]
-                            []
-                        , span []
-                            []
-                        ]
-                    ]
+                [ checkboxView isUnsigned <| UpdateBigIntTurnUnsigned idx
                 ]
             , div []
-                [ div [ class "checkbox" ]
-                    [ label []
-                        [ input [ checked isNotNull, type_ "checkbox", onClick <| UpdateBigIntTurnNotNull idx ]
-                            []
-                        , span []
-                            []
-                        ]
-                    ]
+                [ checkboxView isNotNull <| UpdateBigIntTurnNotNull idx
                 ]
             , div []
                 []
@@ -904,14 +890,7 @@ dbFieldToView idx newEnumValue dbField =
             , div []
                 []
             , div []
-                [ div [ class "checkbox" ]
-                    [ label []
-                        [ input [ checked isNotNull, type_ "checkbox", onClick <| UpdateVarcharTurnNotNull idx ]
-                            []
-                        , span []
-                            []
-                        ]
-                    ]
+                [ checkboxView isNotNull <| UpdateVarcharTurnNotNull idx
                 ]
             , div []
                 []
@@ -930,14 +909,7 @@ dbFieldToView idx newEnumValue dbField =
             , div []
                 []
             , div []
-                [ div [ class "checkbox" ]
-                    [ label []
-                        [ input [ checked isNotNull, type_ "checkbox", onClick <| UpdateBooleanTurnNotNull idx ]
-                            []
-                        , span []
-                            []
-                        ]
-                    ]
+                [ checkboxView isNotNull <| UpdateBooleanTurnNotNull idx
                 ]
             , div []
                 []
@@ -958,14 +930,7 @@ dbFieldToView idx newEnumValue dbField =
             , div []
                 []
             , div []
-                [ div [ class "checkbox" ]
-                    [ label []
-                        [ input [ checked isNotNull, type_ "checkbox", onClick <| UpdateDatetimeTurnNotNull idx ]
-                            []
-                        , span []
-                            []
-                        ]
-                    ]
+                [ checkboxView isNotNull <| UpdateDatetimeTurnNotNull idx
                 ]
             , div []
                 []
@@ -997,14 +962,7 @@ dbFieldToView idx newEnumValue dbField =
             , div []
                 []
             , div []
-                [ div [ class "checkbox" ]
-                    [ label []
-                        [ input [ checked isNotNull, type_ "checkbox", onClick <| UpdateEnumTurnNotNull idx ]
-                            []
-                        , span []
-                            []
-                        ]
-                    ]
+                [ checkboxView isNotNull <| UpdateEnumTurnNotNull idx
                 ]
             , div []
                 []
@@ -1080,6 +1038,18 @@ visibleWord isVisible word =
 
     else
         ""
+
+
+checkboxView : Bool -> Msg -> Html Msg
+checkboxView flag msg =
+    div [ class "checkbox" ]
+        [ label []
+            [ input [ checked flag, type_ "checkbox", onClick <| msg ]
+                []
+            , span []
+                []
+            ]
+        ]
 
 
 headUpper : String -> String
