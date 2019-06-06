@@ -59,7 +59,7 @@ dbFieldArrayToDDLTest =
                                 }
                             ]
                 in
-                dbFieldArrayToDDL dbFieldArray
+                dbFieldArrayToDDL "table" dbFieldArray
                     |> Expect.equal (String.trim """
 CREATE TABLE `table` (
 \t`id` bigint(20) unsigned NOT NULL AUTO_INCREMENT,
