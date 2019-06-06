@@ -17,6 +17,7 @@ import File.Download as Download
 import Html exposing (..)
 import Html.Attributes exposing (..)
 import Html.Events exposing (..)
+import Json.Decode as JD
 import String.Interpolate exposing (interpolate)
 import Task as Task
 
@@ -521,6 +522,31 @@ updateEnumTurnNotNull dbField =
             dbField
 
 
+typeTextToInitDbField : String -> DbField
+typeTextToInitDbField typeText =
+    case typeText of
+        "primary" ->
+            PrimaryKey ""
+
+        "bigint" ->
+            initBigint
+
+        "varchar" ->
+            initVarchar
+
+        "boolean" ->
+            initBoolean
+
+        "datetime" ->
+            initDatetime
+
+        "enum" ->
+            initEnum
+
+        _ ->
+            PrimaryKey "Implementation Error"
+
+
 type alias Index =
     Int
 
@@ -541,6 +567,7 @@ type Msg
     | UpdateEnumTurnNotNull Index
     | UpdateBigIntLength Index String
     | UpdateVarcharLength Index String
+    | UpdateFieldType Index String
     | AddDbField
     | DownloadDDL
     | DownloadInsertStatement
@@ -668,6 +695,14 @@ update msg model =
             , Cmd.none
             )
 
+        UpdateFieldType idx typeText ->
+            ( { model
+                | dbFields =
+                    Array.set idx (typeTextToInitDbField typeText) dbFields
+              }
+            , Cmd.none
+            )
+
         AddDbField ->
             ( { model
                 | dbFields =
@@ -687,21 +722,21 @@ update msg model =
 ---- VIEW ----
 
 
-fieldTypeSelectView : DbField -> Html Msg
-fieldTypeSelectView dbField =
+fieldTypeSelectView : Index -> DbField -> Html Msg
+fieldTypeSelectView idx dbField =
     div [ class "select" ]
-        [ select []
-            [ option [ selected <| isPrimaryKey dbField ]
+        [ select [ onChange <| UpdateFieldType idx ]
+            [ option [ selected <| isPrimaryKey dbField, value "primary" ]
                 [ text "PRIMARY KEY" ]
-            , option [ selected <| isBigint dbField ]
+            , option [ selected <| isBigint dbField, value "bigint" ]
                 [ text "BIGINT" ]
-            , option [ selected <| isVarChar dbField ]
+            , option [ selected <| isVarChar dbField, value "varchar" ]
                 [ text "VARCHAR" ]
-            , option [ selected <| isBoolean dbField ]
+            , option [ selected <| isBoolean dbField, value "boolean" ]
                 [ text "BOOLEAN" ]
-            , option [ selected <| isDatetime dbField ]
+            , option [ selected <| isDatetime dbField, value "datetime" ]
                 [ text "DATETIME" ]
-            , option [ selected <| isEnum dbField ]
+            , option [ selected <| isEnum dbField, value "enum" ]
                 [ text "ENUM" ]
             ]
         ]
@@ -716,7 +751,7 @@ dbFieldToView idx dbField =
                     []
                 ]
             , div []
-                [ fieldTypeSelectView dbField
+                [ fieldTypeSelectView idx dbField
                 ]
             , div []
                 [ input [ class "input", readonly True, type_ "number", value "20" ]
@@ -760,7 +795,7 @@ dbFieldToView idx dbField =
                     []
                 ]
             , div []
-                [ fieldTypeSelectView dbField
+                [ fieldTypeSelectView idx dbField
                 ]
             , div []
                 [ input [ class "input", type_ "number", value <| String.fromInt fieldLength, onInput <| UpdateBigIntLength idx ]
@@ -796,7 +831,7 @@ dbFieldToView idx dbField =
                     []
                 ]
             , div []
-                [ fieldTypeSelectView dbField
+                [ fieldTypeSelectView idx dbField
                 ]
             , div []
                 [ input [ class "input", type_ "number", value <| String.fromInt fieldLength, onInput <| UpdateVarcharLength idx ]
@@ -824,7 +859,7 @@ dbFieldToView idx dbField =
                     []
                 ]
             , div []
-                [ fieldTypeSelectView dbField
+                [ fieldTypeSelectView idx dbField
                 ]
             , div []
                 []
@@ -850,7 +885,7 @@ dbFieldToView idx dbField =
                     []
                 ]
             , div []
-                [ fieldTypeSelectView dbField
+                [ fieldTypeSelectView idx dbField
                 ]
             , div []
                 [ input [ class "input", readonly True, type_ "text", value "6" ]
@@ -879,7 +914,7 @@ dbFieldToView idx dbField =
                 ]
             , div [ class "enum" ]
                 [ div [ class "layout-enum" ]
-                    [ fieldTypeSelectView dbField
+                    [ fieldTypeSelectView idx dbField
                     , input [ class "input", placeholder "new value...", type_ "text" ]
                         []
                     , button [ class "button" ]
@@ -967,6 +1002,11 @@ main =
         , subscriptions = subscriptions
         , view = view
         }
+
+
+onChange : (String -> msg) -> Attribute msg
+onChange tagger =
+    on "change" (JD.map tagger targetValue)
 
 
 visibleWord : Bool -> String -> String
