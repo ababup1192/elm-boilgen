@@ -27,26 +27,29 @@ import Task as Task
 
 
 type alias Model =
-    { tableName : String, dbFields : Array DbField }
+    { tableName : String, dbFields : Array DbField, newEnumValue : String }
 
 
 init : () -> ( Model, Cmd Msg )
 init _ =
-    ( Model "" <|
-        Array.fromList
-            [ PrimaryKey "id"
-            , BigInt
-                { fieldName = "bigint"
-                , fieldLength = 20
-                , isUnsigned = True
-                , isNotNull = True
-                }
-            , VarChar
-                { fieldName = "text"
-                , fieldLength = 10
-                , isNotNull = True
-                }
-            ]
+    ( { tableName = ""
+      , dbFields =
+            Array.fromList
+                [ PrimaryKey "id"
+                , BigInt
+                    { fieldName = "bigint"
+                    , fieldLength = 20
+                    , isUnsigned = True
+                    , isNotNull = True
+                    }
+                , VarChar
+                    { fieldName = "text"
+                    , fieldLength = 10
+                    , isNotNull = True
+                    }
+                ]
+      , newEnumValue = ""
+      }
     , Cmd.none
     )
 
@@ -522,6 +525,16 @@ updateEnumTurnNotNull dbField =
             dbField
 
 
+updateEnumValues : String -> DbField -> DbField
+updateEnumValues newEnumValue dbField =
+    case dbField of
+        Enum enum ->
+            Enum { enum | values = newEnumValue :: enum.values }
+
+        _ ->
+            dbField
+
+
 typeTextToInitDbField : String -> DbField
 typeTextToInitDbField typeText =
     case typeText of
@@ -568,6 +581,8 @@ type Msg
     | UpdateBigIntLength Index String
     | UpdateVarcharLength Index String
     | UpdateFieldType Index String
+    | UpdateNewEnumValue String
+    | UpdateEnumValues Index
     | AddDbField
     | DownloadDDL
     | DownloadInsertStatement
@@ -576,7 +591,7 @@ type Msg
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     let
-        { tableName, dbFields } =
+        { tableName, dbFields, newEnumValue } =
             model
     in
     case msg of
@@ -695,10 +710,22 @@ update msg model =
             , Cmd.none
             )
 
+        UpdateNewEnumValue enumValue ->
+            ( { model | newEnumValue = enumValue }, Cmd.none )
+
         UpdateFieldType idx typeText ->
             ( { model
                 | dbFields =
                     Array.set idx (typeTextToInitDbField typeText) dbFields
+              }
+            , Cmd.none
+            )
+
+        UpdateEnumValues idx ->
+            ( { model
+                | dbFields =
+                    Array.update idx (updateEnumValues newEnumValue) dbFields
+                , newEnumValue = ""
               }
             , Cmd.none
             )
@@ -742,8 +769,8 @@ fieldTypeSelectView idx dbField =
         ]
 
 
-dbFieldToView : Int -> DbField -> List (Html Msg)
-dbFieldToView idx dbField =
+dbFieldToView : Int -> String -> DbField -> List (Html Msg)
+dbFieldToView idx newEnumValue dbField =
     case dbField of
         PrimaryKey fieldName ->
             [ div []
@@ -915,9 +942,9 @@ dbFieldToView idx dbField =
             , div [ class "enum" ]
                 [ div [ class "layout-enum" ]
                     [ fieldTypeSelectView idx dbField
-                    , input [ class "input", placeholder "new value...", type_ "text" ]
+                    , input [ class "input", placeholder "new value...", type_ "text", value newEnumValue, onInput UpdateNewEnumValue ]
                         []
-                    , button [ class "button" ]
+                    , button [ class "button", onClick <| UpdateEnumValues idx ]
                         [ text "Add" ]
                     ]
                 , ul [ class "cp-layout-items-tag" ] <|
@@ -950,7 +977,7 @@ dbFieldToView idx dbField =
 view : Model -> Browser.Document Msg
 view model =
     let
-        { dbFields } =
+        { dbFields, newEnumValue } =
             model
 
         dbFieldList =
@@ -982,7 +1009,7 @@ view model =
             , div []
                 [ text "Auto Increment" ]
             ]
-                ++ (dbFieldList |> List.indexedMap Tuple.pair |> List.concatMap (\( idx, dbField ) -> dbFieldToView idx dbField))
+                ++ (dbFieldList |> List.indexedMap Tuple.pair |> List.concatMap (\( idx, dbField ) -> dbFieldToView idx newEnumValue dbField))
         , div [ class "add-column" ]
             [ span [ class "button is-success", onClick AddDbField ] [ text "+" ]
             ]
