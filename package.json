@@ -9,7 +9,7 @@
     "watch": "npm-run-all -p watch:*",
     "start": "npm-run-all -s copy watch",
     "test": "elm-test",
-    "build:elm": "elm make src/Main.elm --output=./out/elm.js",
+    "build:elm": "elm make src/Main.elm --optimize --output=./out/elm.js",
     "build:sass": "node-sass --include-path scss ./src/style.scss ./out/style.css",
     "build-all": "npm-run-all -p build:*",
     "build": "npm-run-all -s copy build-all"
