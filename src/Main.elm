@@ -539,7 +539,25 @@ updateEnumValues : String -> DbField -> DbField
 updateEnumValues newEnumValue dbField =
     case dbField of
         Enum enum ->
-            Enum { enum | values = newEnumValue :: enum.values }
+            Enum
+                { enum
+                    | values =
+                        if List.member newEnumValue enum.values then
+                            enum.values
+
+                        else
+                            newEnumValue :: enum.values
+                }
+
+        _ ->
+            dbField
+
+
+deleteEnumValue : String -> DbField -> DbField
+deleteEnumValue deletedEnumValue dbField =
+    case dbField of
+        Enum enum ->
+            Enum { enum | values = List.filter (not << (==) deletedEnumValue) enum.values }
 
         _ ->
             dbField
@@ -593,6 +611,7 @@ type Msg
     | UpdateFieldType Index String
     | UpdateNewEnumValue String
     | UpdateEnumValues Index
+    | DeleteEnumValue String Index
     | AddDbField
     | DownloadDDL
     | DownloadInsertStatement
@@ -736,6 +755,14 @@ update msg model =
                 | dbFields =
                     Array.update idx (updateEnumValues newEnumValue) dbFields
                 , newEnumValue = ""
+              }
+            , Cmd.none
+            )
+
+        DeleteEnumValue deletedEnumValue idx ->
+            ( { model
+                | dbFields =
+                    Array.update idx (deleteEnumValue deletedEnumValue) dbFields
               }
             , Cmd.none
             )
@@ -960,7 +987,7 @@ dbFieldToView idx newEnumValue dbField =
                 , ul [ class "cp-layout-items-tag" ] <|
                     List.map
                         (\v ->
-                            li []
+                            li [ onClick <| DeleteEnumValue v idx ]
                                 [ text v ]
                         )
                         values
