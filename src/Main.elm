@@ -402,22 +402,27 @@ dbFieldArrayToInsertStatement upperCamelTableName tableName dbFieldList =
         ]
 
 
-dbFieldArrayToCucumber : String -> Array DbField -> String
-dbFieldArrayToCucumber tableName dbFieldArray =
+dbFieldListToDataTableMethod : String -> List DbField -> String
+dbFieldListToDataTableMethod upperCamelTableName dbFieldList =
     let
-        dbFieldList =
-            dbFieldArray |> Array.toList
-
-        args =
-            dbFieldList
-                |> List.map (dbFieldToFieldName >> lowerCamel >> (\n -> "String " ++ n))
-                |> String.join ", "
-
         getFieldNameStateFromDataTables =
             dbFieldList
                 |> List.map (dbFieldToFieldName >> (\t -> "dtm.get(\"" ++ t ++ "\")"))
                 |> String.join ", "
+    in
+    interpolate """public void create{0}(DataTable dataTable) {
+\tdataTable.asMaps().stream().map(dtm -> this.create{0}By(
+\t\t{1}
+\t)).forEach(this::executeStatement);
+}"""
+        [ upperCamelTableName
+        , getFieldNameStateFromDataTables
+        ]
 
+
+dbFieldListToDataTable : List DbField -> String
+dbFieldListToDataTable dbFieldList =
+    let
         dataTableHeaders =
             dbFieldList
                 |> List.map dbFieldToFieldName
@@ -428,24 +433,28 @@ dbFieldArrayToCucumber tableName dbFieldArray =
                 |> List.map dbFieldToDataTableValue
                 |> String.join "|"
     in
-    interpolate """{0}
-
-public void create{1}(DataTable dataTable) {
-\tdataTable.asMaps().stream().map(dtm -> this.create{1}By(
-\t\t{2}
-\t)).forEach(this::executeStatement);
-}
-
-/*
-|{3}|
-|{4}|
+    interpolate """/*
+|{0}|
+|{1}|
 */"""
-        [ dbFieldArrayToInsertStatement (upperCamelize tableName) tableName dbFieldList
-        , upperCamelize tableName
-        , getFieldNameStateFromDataTables
-        , dataTableHeaders
-        , dataTableValues
-        ]
+        [ dataTableHeaders, dataTableValues ]
+
+
+dbFieldArrayToCucumber : String -> Array DbField -> String
+dbFieldArrayToCucumber tableName dbFieldArray =
+    let
+        dbFieldList =
+            dbFieldArray |> Array.toList
+
+        upperCamelTableName =
+            upperCamelize tableName
+    in
+    [ dbFieldArrayToInsertStatement upperCamelTableName tableName
+    , dbFieldListToDataTableMethod upperCamelTableName
+    , dbFieldListToDataTable
+    ]
+        |> List.map (\f -> f dbFieldList)
+        |> String.join "\n\n"
 
 
 
