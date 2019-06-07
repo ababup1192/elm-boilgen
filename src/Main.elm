@@ -391,6 +391,11 @@ dbFieldArrayToInsertMethod tableName dbFieldArray =
         formatArgs =
             dbFieldList |> List.map dbFieldToFormatArg |> String.join ", "
 
+        getFieldNameStateFromDataTables =
+            dbFieldList
+                |> List.map (dbFieldToFieldName >> (\t -> "dtm.get(\"" ++ t ++ "\")"))
+                |> String.join ", "
+
         dataTableHeaders =
             dbFieldList
                 |> List.map dbFieldToFieldName
@@ -407,9 +412,17 @@ dbFieldArrayToInsertMethod tableName dbFieldArray =
 \t\t"({4});", {5});
 }
 
+public void create{0}(DataTable dataTable) {
+\tStream<Map<String, String>> dataTableMapStream = dataTable.asMaps().stream();
+\t\tdataTableMapStream.map(dtm -> this.create{0}By(
+\t\t\t{6}
+\t\t)
+\t).forEach(this::executeStatement);
+}
+
 /*
-|{6}|
 |{7}|
+|{8}|
 */"""
         [ upperCamelize tableName
         , args
@@ -417,6 +430,7 @@ dbFieldArrayToInsertMethod tableName dbFieldArray =
         , dbFieldNames
         , formatStrings
         , formatArgs
+        , getFieldNameStateFromDataTables
         , dataTableHeaders
         , dataTableValues
         ]
