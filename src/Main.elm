@@ -2,8 +2,8 @@ module Main exposing
     ( DbField(..)
     , Model
     , Msg(..)
+    , dbFieldArrayToCucumber
     , dbFieldArrayToDDL
-    , dbFieldArrayToInsertMethod
     , init
     , main
     , update
@@ -363,8 +363,8 @@ dbFieldArrayToDDL tableName dbFieldArray =
     "CREATE TABLE `" ++ tableName ++ "` (\n\t" ++ fieldTexts ++ "\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;"
 
 
-dbFieldArrayToInsertMethod : String -> Array DbField -> String
-dbFieldArrayToInsertMethod tableName dbFieldArray =
+dbFieldArrayToCucumber : String -> Array DbField -> String
+dbFieldArrayToCucumber tableName dbFieldArray =
     let
         dbFieldList =
             dbFieldArray |> Array.toList
@@ -667,7 +667,7 @@ type Msg
     | DeleteEnumValue String Index
     | AddDbField
     | DownloadDDL
-    | DownloadInsertStatement
+    | DownloadCucumber
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
@@ -831,8 +831,8 @@ update msg model =
         DownloadDDL ->
             ( model, Download.string (tableName ++ ".sql") "text/plain" <| dbFieldArrayToDDL tableName dbFields )
 
-        DownloadInsertStatement ->
-            ( model, Download.string (tableName ++ ".java") "text/plain" <| dbFieldArrayToInsertMethod tableName dbFields )
+        DownloadCucumber ->
+            ( model, Download.string (tableName ++ ".java") "text/plain" <| dbFieldArrayToCucumber tableName dbFields )
 
 
 
@@ -1035,7 +1035,7 @@ view model =
     , body =
         [ div [ class "downloads" ]
             [ button [ class "button is-primary", onClick DownloadDDL ] [ text "DDL" ]
-            , button [ class "button is-primary", onClick DownloadInsertStatement ] [ text "Insert Statement" ]
+            , button [ class "button is-primary", onClick DownloadCucumber ] [ text "Cucumber" ]
             ]
         , div [ class "field" ]
             [ div [ class "control" ]

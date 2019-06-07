@@ -1,4 +1,4 @@
-module Tests exposing (dbFieldArrayToDDLTest, dbFieldArrayToInsertMethodTest)
+module Tests exposing (dbFieldArrayToCucumberTest, dbFieldArrayToDDLTest)
 
 import Array exposing (Array)
 import Expect exposing (Expectation)
@@ -82,9 +82,9 @@ CREATE TABLE `tables` (
         ]
 
 
-dbFieldArrayToInsertMethodTest : Test
-dbFieldArrayToInsertMethodTest =
-    describe "dbFieldArrayToInsertMethodTest"
+dbFieldArrayToCucumberTest : Test
+dbFieldArrayToCucumberTest =
+    describe "dbFieldArrayToCucumberTest"
         [ test "Insertメソッドとデータテーブルが生成される" <|
             \_ ->
                 let
@@ -117,7 +117,7 @@ dbFieldArrayToInsertMethodTest =
                                 }
                             ]
                 in
-                dbFieldArrayToInsertMethod "tables" dbFieldArray
+                dbFieldArrayToCucumber "tables" dbFieldArray
                     |> Expect.equal (String.trim """
 private String createTablesBy(String id, String foo, String text, String hogeFlag, String startAt, String enm) {
 \treturn String.format("INSERT INTO `tables` (id, foo, text, hoge_flag, start_at, enm, created_at, created_by, updated_at, updated_by, version_no) " +
