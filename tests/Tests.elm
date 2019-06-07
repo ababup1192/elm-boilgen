@@ -71,6 +71,11 @@ CREATE TABLE `tables` (
 \t`bool` boolean NOT NULL,
 \t`dt` datetime(6) NOT NULL,
 \t`enm` enum('DEFAULT', 'FIRST', 'SECOND') NOT NULL,
+\t`created_at` datetime(6) NOT NULL,
+\t`created_by` bigint(20) unsigned NOT NULL,
+\t`updated_at` datetime(6) NOT NULL,
+\t`updated_by` bigint(20) unsigned NOT NULL,
+\t`version_no` bigint(20) unsigned NOT NULL,
 \tPRIMARY KEY (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
                     """)

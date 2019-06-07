@@ -17,6 +17,7 @@ import File.Download as Download
 import Html exposing (..)
 import Html.Attributes exposing (..)
 import Html.Events exposing (..)
+import Json.Decode as JD
 import String.Interpolate exposing (interpolate)
 import Task as Task
 
@@ -26,26 +27,29 @@ import Task as Task
 
 
 type alias Model =
-    { tableName : String, dbFields : Array DbField }
+    { tableName : String, dbFields : Array DbField, newEnumValue : String }
 
 
 init : () -> ( Model, Cmd Msg )
 init _ =
-    ( Model "" <|
-        Array.fromList
-            [ PrimaryKey "id"
-            , BigInt
-                { fieldName = "bigint"
-                , fieldLength = 20
-                , isUnsigned = True
-                , isNotNull = True
-                }
-            , VarChar
-                { fieldName = "text"
-                , fieldLength = 10
-                , isNotNull = True
-                }
-            ]
+    ( { tableName = ""
+      , dbFields =
+            Array.fromList
+                [ PrimaryKey "id"
+                , BigInt
+                    { fieldName = "bigint"
+                    , fieldLength = 20
+                    , isUnsigned = True
+                    , isNotNull = True
+                    }
+                , VarChar
+                    { fieldName = "text"
+                    , fieldLength = 10
+                    , isNotNull = True
+                    }
+                ]
+      , newEnumValue = ""
+      }
     , Cmd.none
     )
 
@@ -338,7 +342,17 @@ dbFieldArrayToDDL tableName dbFieldArray =
                 |> Maybe.withDefault Array.empty
 
         fieldTextArray =
-            dbFieldArray
+            (Array.append
+                dbFieldArray
+             <|
+                Array.fromList
+                    [ Datetime { fieldName = "created_at", isNotNull = True }
+                    , BigInt { fieldName = "created_by", fieldLength = 20, isUnsigned = True, isNotNull = True }
+                    , Datetime { fieldName = "updated_at", isNotNull = True }
+                    , BigInt { fieldName = "updated_by", fieldLength = 20, isUnsigned = True, isNotNull = True }
+                    , BigInt { fieldName = "version_no", fieldLength = 20, isUnsigned = True, isNotNull = True }
+                    ]
+            )
                 |> Array.map dbFieldToDDL
 
         fieldTexts =
@@ -560,6 +574,59 @@ updateEnumTurnNotNull dbField =
             dbField
 
 
+updateEnumValues : String -> DbField -> DbField
+updateEnumValues newEnumValue dbField =
+    case dbField of
+        Enum enum ->
+            Enum
+                { enum
+                    | values =
+                        if List.member newEnumValue enum.values then
+                            enum.values
+
+                        else
+                            newEnumValue :: enum.values
+                }
+
+        _ ->
+            dbField
+
+
+deleteEnumValue : String -> DbField -> DbField
+deleteEnumValue deletedEnumValue dbField =
+    case dbField of
+        Enum enum ->
+            Enum { enum | values = List.filter (not << (==) deletedEnumValue) enum.values }
+
+        _ ->
+            dbField
+
+
+typeTextToInitDbField : String -> DbField
+typeTextToInitDbField typeText =
+    case typeText of
+        "primary" ->
+            PrimaryKey ""
+
+        "bigint" ->
+            initBigint
+
+        "varchar" ->
+            initVarchar
+
+        "boolean" ->
+            initBoolean
+
+        "datetime" ->
+            initDatetime
+
+        "enum" ->
+            initEnum
+
+        _ ->
+            PrimaryKey "Implementation Error"
+
+
 type alias Index =
     Int
 
@@ -580,6 +647,10 @@ type Msg
     | UpdateEnumTurnNotNull Index
     | UpdateBigIntLength Index String
     | UpdateVarcharLength Index String
+    | UpdateFieldType Index String
+    | UpdateNewEnumValue String
+    | UpdateEnumValues Index
+    | DeleteEnumValue String Index
     | AddDbField
     | DownloadDDL
     | DownloadInsertStatement
@@ -588,7 +659,7 @@ type Msg
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     let
-        { tableName, dbFields } =
+        { tableName, dbFields, newEnumValue } =
             model
     in
     case msg of
@@ -707,6 +778,34 @@ update msg model =
             , Cmd.none
             )
 
+        UpdateNewEnumValue enumValue ->
+            ( { model | newEnumValue = enumValue }, Cmd.none )
+
+        UpdateFieldType idx typeText ->
+            ( { model
+                | dbFields =
+                    Array.set idx (typeTextToInitDbField typeText) dbFields
+              }
+            , Cmd.none
+            )
+
+        UpdateEnumValues idx ->
+            ( { model
+                | dbFields =
+                    Array.update idx (updateEnumValues newEnumValue) dbFields
+                , newEnumValue = ""
+              }
+            , Cmd.none
+            )
+
+        DeleteEnumValue deletedEnumValue idx ->
+            ( { model
+                | dbFields =
+                    Array.update idx (deleteEnumValue deletedEnumValue) dbFields
+              }
+            , Cmd.none
+            )
+
         AddDbField ->
             ( { model
                 | dbFields =
@@ -726,28 +825,28 @@ update msg model =
 ---- VIEW ----
 
 
-fieldTypeSelectView : DbField -> Html Msg
-fieldTypeSelectView dbField =
+fieldTypeSelectView : Index -> DbField -> Html Msg
+fieldTypeSelectView idx dbField =
     div [ class "select" ]
-        [ select []
-            [ option [ selected <| isPrimaryKey dbField ]
+        [ select [ onChange <| UpdateFieldType idx ]
+            [ option [ selected <| isPrimaryKey dbField, value "primary" ]
                 [ text "PRIMARY KEY" ]
-            , option [ selected <| isBigint dbField ]
+            , option [ selected <| isBigint dbField, value "bigint" ]
                 [ text "BIGINT" ]
-            , option [ selected <| isVarChar dbField ]
+            , option [ selected <| isVarChar dbField, value "varchar" ]
                 [ text "VARCHAR" ]
-            , option [ selected <| isBoolean dbField ]
+            , option [ selected <| isBoolean dbField, value "boolean" ]
                 [ text "BOOLEAN" ]
-            , option [ selected <| isDatetime dbField ]
+            , option [ selected <| isDatetime dbField, value "datetime" ]
                 [ text "DATETIME" ]
-            , option [ selected <| isEnum dbField ]
+            , option [ selected <| isEnum dbField, value "enum" ]
                 [ text "ENUM" ]
             ]
         ]
 
 
-dbFieldToView : Int -> DbField -> List (Html Msg)
-dbFieldToView idx dbField =
+dbFieldToView : Int -> String -> DbField -> List (Html Msg)
+dbFieldToView idx newEnumValue dbField =
     case dbField of
         PrimaryKey fieldName ->
             [ div []
@@ -755,7 +854,7 @@ dbFieldToView idx dbField =
                     []
                 ]
             , div []
-                [ fieldTypeSelectView dbField
+                [ fieldTypeSelectView idx dbField
                 ]
             , div []
                 [ input [ class "input", readonly True, type_ "number", value "20" ]
@@ -799,31 +898,17 @@ dbFieldToView idx dbField =
                     []
                 ]
             , div []
-                [ fieldTypeSelectView dbField
+                [ fieldTypeSelectView idx dbField
                 ]
             , div []
                 [ input [ class "input", type_ "number", value <| String.fromInt fieldLength, onInput <| UpdateBigIntLength idx ]
                     []
                 ]
             , div []
-                [ div [ class "checkbox" ]
-                    [ label []
-                        [ input [ checked isUnsigned, type_ "checkbox", onClick <| UpdateBigIntTurnUnsigned idx ]
-                            []
-                        , span []
-                            []
-                        ]
-                    ]
+                [ checkboxView isUnsigned <| UpdateBigIntTurnUnsigned idx
                 ]
             , div []
-                [ div [ class "checkbox" ]
-                    [ label []
-                        [ input [ checked isNotNull, type_ "checkbox", onClick <| UpdateBigIntTurnNotNull idx ]
-                            []
-                        , span []
-                            []
-                        ]
-                    ]
+                [ checkboxView isNotNull <| UpdateBigIntTurnNotNull idx
                 ]
             , div []
                 []
@@ -835,7 +920,7 @@ dbFieldToView idx dbField =
                     []
                 ]
             , div []
-                [ fieldTypeSelectView dbField
+                [ fieldTypeSelectView idx dbField
                 ]
             , div []
                 [ input [ class "input", type_ "number", value <| String.fromInt fieldLength, onInput <| UpdateVarcharLength idx ]
@@ -844,14 +929,7 @@ dbFieldToView idx dbField =
             , div []
                 []
             , div []
-                [ div [ class "checkbox" ]
-                    [ label []
-                        [ input [ checked isNotNull, type_ "checkbox", onClick <| UpdateVarcharTurnNotNull idx ]
-                            []
-                        , span []
-                            []
-                        ]
-                    ]
+                [ checkboxView isNotNull <| UpdateVarcharTurnNotNull idx
                 ]
             , div []
                 []
@@ -863,21 +941,14 @@ dbFieldToView idx dbField =
                     []
                 ]
             , div []
-                [ fieldTypeSelectView dbField
+                [ fieldTypeSelectView idx dbField
                 ]
             , div []
                 []
             , div []
                 []
             , div []
-                [ div [ class "checkbox" ]
-                    [ label []
-                        [ input [ checked isNotNull, type_ "checkbox", onClick <| UpdateBooleanTurnNotNull idx ]
-                            []
-                        , span []
-                            []
-                        ]
-                    ]
+                [ checkboxView isNotNull <| UpdateBooleanTurnNotNull idx
                 ]
             , div []
                 []
@@ -889,7 +960,7 @@ dbFieldToView idx dbField =
                     []
                 ]
             , div []
-                [ fieldTypeSelectView dbField
+                [ fieldTypeSelectView idx dbField
                 ]
             , div []
                 [ input [ class "input", readonly True, type_ "text", value "6" ]
@@ -898,14 +969,7 @@ dbFieldToView idx dbField =
             , div []
                 []
             , div []
-                [ div [ class "checkbox" ]
-                    [ label []
-                        [ input [ checked isNotNull, type_ "checkbox", onClick <| UpdateDatetimeTurnNotNull idx ]
-                            []
-                        , span []
-                            []
-                        ]
-                    ]
+                [ checkboxView isNotNull <| UpdateDatetimeTurnNotNull idx
                 ]
             , div []
                 []
@@ -918,16 +982,16 @@ dbFieldToView idx dbField =
                 ]
             , div [ class "enum" ]
                 [ div [ class "layout-enum" ]
-                    [ fieldTypeSelectView dbField
-                    , input [ class "input", placeholder "new value...", type_ "text" ]
+                    [ fieldTypeSelectView idx dbField
+                    , input [ class "input", placeholder "new value...", type_ "text", value newEnumValue, onInput UpdateNewEnumValue ]
                         []
-                    , button [ class "button" ]
+                    , button [ class "button", onClick <| UpdateEnumValues idx ]
                         [ text "Add" ]
                     ]
                 , ul [ class "cp-layout-items-tag" ] <|
                     List.map
                         (\v ->
-                            li []
+                            li [ onClick <| DeleteEnumValue v idx ]
                                 [ text v ]
                         )
                         values
@@ -937,14 +1001,7 @@ dbFieldToView idx dbField =
             , div []
                 []
             , div []
-                [ div [ class "checkbox" ]
-                    [ label []
-                        [ input [ checked isNotNull, type_ "checkbox", onClick <| UpdateEnumTurnNotNull idx ]
-                            []
-                        , span []
-                            []
-                        ]
-                    ]
+                [ checkboxView isNotNull <| UpdateEnumTurnNotNull idx
                 ]
             , div []
                 []
@@ -954,7 +1011,7 @@ dbFieldToView idx dbField =
 view : Model -> Browser.Document Msg
 view model =
     let
-        { dbFields } =
+        { dbFields, newEnumValue } =
             model
 
         dbFieldList =
@@ -986,7 +1043,7 @@ view model =
             , div []
                 [ text "Auto Increment" ]
             ]
-                ++ (dbFieldList |> List.indexedMap Tuple.pair |> List.concatMap (\( idx, dbField ) -> dbFieldToView idx dbField))
+                ++ (dbFieldList |> List.indexedMap Tuple.pair |> List.concatMap (\( idx, dbField ) -> dbFieldToView idx newEnumValue dbField))
         , div [ class "add-column" ]
             [ span [ class "button is-success", onClick AddDbField ] [ text "+" ]
             ]
@@ -1008,6 +1065,11 @@ main =
         }
 
 
+onChange : (String -> msg) -> Attribute msg
+onChange tagger =
+    on "change" (JD.map tagger targetValue)
+
+
 visibleWord : Bool -> String -> String
 visibleWord isVisible word =
     if isVisible then
@@ -1015,6 +1077,18 @@ visibleWord isVisible word =
 
     else
         ""
+
+
+checkboxView : Bool -> Msg -> Html Msg
+checkboxView flag msg =
+    div [ class "checkbox" ]
+        [ label []
+            [ input [ checked flag, type_ "checkbox", onClick <| msg ]
+                []
+            , span []
+                []
+            ]
+        ]
 
 
 headUpper : String -> String
