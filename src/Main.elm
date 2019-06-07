@@ -413,11 +413,9 @@ dbFieldArrayToCucumber tableName dbFieldArray =
 }
 
 public void create{0}(DataTable dataTable) {
-\tStream<Map<String, String>> dataTableMapStream = dataTable.asMaps().stream();
-\t\tdataTableMapStream.map(dtm -> this.create{0}By(
-\t\t\t{6}
-\t\t)
-\t).forEach(this::executeStatement);
+\tdataTable.asMaps().stream().map(dtm -> this.create{0}By(
+\t\t{6}
+\t)).forEach(this::executeStatement);
 }
 
 /*
