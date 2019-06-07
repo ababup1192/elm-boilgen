@@ -213,6 +213,28 @@ dbFieldToFieldName dbField =
             fieldName
 
 
+dbFieldToDataTableValue : DbField -> String
+dbFieldToDataTableValue dbField =
+    case dbField of
+        PrimaryKey _ ->
+            "1"
+
+        BigInt _ ->
+            "1"
+
+        VarChar _ ->
+            "char"
+
+        Boolean _ ->
+            "true"
+
+        Datetime _ ->
+            "2019-04-01 00:00:00"
+
+        Enum { values } ->
+            Maybe.withDefault "" <| List.head values
+
+
 isPrimaryKey : DbField -> Bool
 isPrimaryKey dbField =
     case dbField of
@@ -354,18 +376,35 @@ dbFieldArrayToInsertMethod tableName dbFieldArray =
 
         formatArgs =
             dbFieldList |> List.map dbFieldToFormatArg |> String.join ", "
+
+        dataTableHeaders =
+            dbFieldList
+                |> List.map dbFieldToFieldName
+                |> String.join "|"
+
+        dataTableValues =
+            dbFieldList
+                |> List.map dbFieldToDataTableValue
+                |> String.join "|"
     in
     interpolate """private String create{0}By({1}) {
 \treturn String.format("INSERT INTO `{2}` ({3}) " +
 \t\t"VALUES " +
 \t\t"({4});", {5});
-}"""
+}
+
+/*
+|{6}|
+|{7}|
+*/"""
         [ upperCamelize tableName
         , args
         , tableName
         , dbFieldNames
         , formatStrings
         , formatArgs
+        , dataTableHeaders
+        , dataTableValues
         ]
 
 

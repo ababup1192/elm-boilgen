@@ -59,9 +59,9 @@ dbFieldArrayToDDLTest =
                                 }
                             ]
                 in
-                dbFieldArrayToDDL dbFieldArray
+                dbFieldArrayToDDL "tables" dbFieldArray
                     |> Expect.equal (String.trim """
-CREATE TABLE `table` (
+CREATE TABLE `tables` (
 \t`id` bigint(20) unsigned NOT NULL AUTO_INCREMENT,
 \t`hoge` bigint(20) unsigned NOT NULL,
 \t`foo` bigint(5) NOT NULL,
@@ -80,7 +80,7 @@ CREATE TABLE `table` (
 dbFieldArrayToInsertMethodTest : Test
 dbFieldArrayToInsertMethodTest =
     describe "dbFieldArrayToInsertMethodTest"
-        [ test "Insertメソッドが生成される" <|
+        [ test "Insertメソッドとデータテーブルが生成される" <|
             \_ ->
                 let
                     dbFieldArray =
@@ -119,5 +119,10 @@ private String createTablesBy(String id, String foo, String text, String hogeFla
 \t\t"VALUES " +
 \t\t"(%s, %s, %s, %s, '%s', %s,'2019-04-01', 1, '2019-04-01', 1, 1);", id, foo, nullableTextToStr(text), hogeFlag, startAt, nullableTextToStr(enm));
 }
+
+/*
+|id|foo|text|hoge_flag|start_at|enm|
+|1|1|char|true|2019-04-01 00:00:00|DEFAULT|
+*/
 """)
         ]
