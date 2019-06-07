@@ -363,12 +363,9 @@ dbFieldArrayToDDL tableName dbFieldArray =
     "CREATE TABLE `" ++ tableName ++ "` (\n\t" ++ fieldTexts ++ "\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;"
 
 
-dbFieldArrayToCucumber : String -> Array DbField -> String
-dbFieldArrayToCucumber tableName dbFieldArray =
+dbFieldArrayToInsertStatement : String -> String -> List DbField -> String
+dbFieldArrayToInsertStatement upperCamelTableName tableName dbFieldList =
     let
-        dbFieldList =
-            dbFieldArray |> Array.toList
-
         args =
             dbFieldList
                 |> List.map (dbFieldToFieldName >> lowerCamel >> (\n -> "String " ++ n))
@@ -390,6 +387,31 @@ dbFieldArrayToCucumber tableName dbFieldArray =
 
         formatArgs =
             dbFieldList |> List.map dbFieldToFormatArg |> String.join ", "
+    in
+    interpolate """private String create{0}By({1}) {
+\treturn String.format("INSERT INTO `{2}` ({3}) " +
+\t\t"VALUES " +
+\t\t"({4});", {5});
+}"""
+        [ upperCamelTableName
+        , args
+        , tableName
+        , dbFieldNames
+        , formatStrings
+        , formatArgs
+        ]
+
+
+dbFieldArrayToCucumber : String -> Array DbField -> String
+dbFieldArrayToCucumber tableName dbFieldArray =
+    let
+        dbFieldList =
+            dbFieldArray |> Array.toList
+
+        args =
+            dbFieldList
+                |> List.map (dbFieldToFieldName >> lowerCamel >> (\n -> "String " ++ n))
+                |> String.join ", "
 
         getFieldNameStateFromDataTables =
             dbFieldList
@@ -406,28 +428,20 @@ dbFieldArrayToCucumber tableName dbFieldArray =
                 |> List.map dbFieldToDataTableValue
                 |> String.join "|"
     in
-    interpolate """private String create{0}By({1}) {
-\treturn String.format("INSERT INTO `{2}` ({3}) " +
-\t\t"VALUES " +
-\t\t"({4});", {5});
-}
+    interpolate """{0}
 
-public void create{0}(DataTable dataTable) {
-\tdataTable.asMaps().stream().map(dtm -> this.create{0}By(
-\t\t{6}
+public void create{1}(DataTable dataTable) {
+\tdataTable.asMaps().stream().map(dtm -> this.create{1}By(
+\t\t{2}
 \t)).forEach(this::executeStatement);
 }
 
 /*
-|{7}|
-|{8}|
+|{3}|
+|{4}|
 */"""
-        [ upperCamelize tableName
-        , args
-        , tableName
-        , dbFieldNames
-        , formatStrings
-        , formatArgs
+        [ dbFieldArrayToInsertStatement (upperCamelize tableName) tableName dbFieldList
+        , upperCamelize tableName
         , getFieldNameStateFromDataTables
         , dataTableHeaders
         , dataTableValues
