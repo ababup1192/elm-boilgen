@@ -359,8 +359,34 @@ dbFieldArrayToDDL tableName dbFieldArray =
             Array.append fieldTextArray primaryTextArray
                 |> Array.toList
                 |> String.join ",\n\t"
+
+        fkList =
+            dbFieldArray
+                |> Array.toList
+                |> List.filter (not << isPrimaryKey)
+                |> List.map dbFieldToFieldName
+                |> List.filter (String.endsWith "_id")
+
+        fkTexts =
+            if List.isEmpty fkList then
+                ""
+
+            else
+                ",\n\t/* You shoud check the following */\n\t"
+                    ++ (fkList
+                            |> List.map
+                                (\fieldName ->
+                                    let
+                                        -- Drop "_id"
+                                        tName =
+                                            String.dropRight 3 fieldName
+                                    in
+                                    interpolate "CONSTRAINT `FK_{0}_{1}S_{2}` FOREIGN KEY (`{3}`) REFERENCES `{4}s` (`{3}`)" [ String.toUpper tableName, String.toUpper tName, String.toUpper fieldName, fieldName, tName ]
+                                )
+                            |> String.join ",\n\t"
+                       )
     in
-    "CREATE TABLE `" ++ tableName ++ "` (\n\t" ++ fieldTexts ++ "\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;"
+    "CREATE TABLE `" ++ tableName ++ "` (\n\t" ++ fieldTexts ++ fkTexts ++ "\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;"
 
 
 dbFieldArrayToInsertStatement : String -> String -> List DbField -> String

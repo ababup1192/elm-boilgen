@@ -17,7 +17,7 @@ dbFieldArrayToDDLTest =
                         Array.fromList
                             [ PrimaryKey "id"
                             , BigInt
-                                { fieldName = "hoge"
+                                { fieldName = "hoge_id"
                                 , fieldLength = 20
                                 , isUnsigned = True
                                 , isNotNull = True
@@ -63,7 +63,7 @@ dbFieldArrayToDDLTest =
                     |> Expect.equal (String.trim """
 CREATE TABLE `tables` (
 \t`id` bigint(20) unsigned NOT NULL AUTO_INCREMENT,
-\t`hoge` bigint(20) unsigned NOT NULL,
+\t`hoge_id` bigint(20) unsigned NOT NULL,
 \t`foo` bigint(5) NOT NULL,
 \t`bar` bigint(10),
 \t`aaa` varchar(10) NOT NULL,
@@ -76,7 +76,9 @@ CREATE TABLE `tables` (
 \t`updated_at` datetime(6) NOT NULL,
 \t`updated_by` bigint(20) unsigned NOT NULL,
 \t`version_no` bigint(20) unsigned NOT NULL,
-\tPRIMARY KEY (`id`)
+\tPRIMARY KEY (`id`),
+\t/* You shoud check the following */
+\tCONSTRAINT `FK_TABLES_HOGES_HOGE_ID` FOREIGN KEY (`hoge_id`) REFERENCES `hoges` (`hoge_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
                     """)
         ]
