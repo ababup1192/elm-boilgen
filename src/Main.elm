@@ -4,6 +4,7 @@ module Main exposing
     , Msg(..)
     , dbFieldArrayToCucumber
     , dbFieldArrayToDDL
+    , dbFieldArrayToScalaCode
     , init
     , main
     , update
@@ -170,23 +171,23 @@ dbFieldToFormatArg dbField =
     let
         nullableWrapper isNotNull fieldName =
             if isNotNull then
-                lowerCamel fieldName
+                lowerCamelize fieldName
 
             else
-                "nullableTextToStr(" ++ lowerCamel fieldName ++ ")"
+                "nullableTextToStr(" ++ lowerCamelize fieldName ++ ")"
     in
     case dbField of
         PrimaryKey fieldName ->
-            lowerCamel fieldName
+            lowerCamelize fieldName
 
         BigInt { fieldName } ->
-            lowerCamel fieldName
+            lowerCamelize fieldName
 
         VarChar { fieldName, isNotNull } ->
             nullableWrapper isNotNull fieldName
 
         Boolean { fieldName, isNotNull } ->
-            lowerCamel fieldName
+            lowerCamelize fieldName
 
         Datetime { fieldName, isNotNull } ->
             nullableWrapper isNotNull fieldName
@@ -237,6 +238,65 @@ dbFieldToDataTableValue dbField =
 
         Enum { values } ->
             Maybe.withDefault "" <| List.head values
+
+
+dbFieldToScalaArgs : DbField -> String
+dbFieldToScalaArgs dbField =
+    let
+        decorateOption isNotNull scalaTypes =
+            if isNotNull then
+                scalaTypes
+
+            else
+                "Option[" ++ scalaTypes ++ "]"
+
+        createArgs fieldName isNotNull scalaTypes =
+            lowerCamelize fieldName ++ ": " ++ decorateOption isNotNull scalaTypes
+    in
+    case dbField of
+        PrimaryKey fieldName ->
+            lowerCamelize fieldName ++ ": Long"
+
+        BigInt { fieldName, isNotNull } ->
+            createArgs fieldName isNotNull "Long"
+
+        VarChar { fieldName, isNotNull } ->
+            createArgs fieldName isNotNull "String"
+
+        Boolean { fieldName, isNotNull } ->
+            createArgs fieldName isNotNull "Boolean"
+
+        Datetime { fieldName, isNotNull } ->
+            createArgs fieldName isNotNull "ZonedDateTime"
+
+        Enum { fieldName, values, isNotNull } ->
+            ""
+
+
+dbFieldToScalaNameBind : DbField -> String
+dbFieldToScalaNameBind dbField =
+    let
+        bindText fieldName =
+            lowerCamelize fieldName ++ " = " ++ lowerCamelize fieldName
+    in
+    case dbField of
+        PrimaryKey fieldName ->
+            bindText fieldName
+
+        BigInt { fieldName } ->
+            bindText fieldName
+
+        VarChar { fieldName } ->
+            bindText fieldName
+
+        Boolean { fieldName } ->
+            bindText fieldName
+
+        Datetime { fieldName } ->
+            bindText fieldName
+
+        Enum { fieldName } ->
+            bindText fieldName
 
 
 isPrimaryKey : DbField -> Bool
@@ -394,7 +454,7 @@ dbFieldArrayToInsertStatement upperCamelTableName tableName dbFieldList =
     let
         args =
             dbFieldList
-                |> List.map (dbFieldToFieldName >> lowerCamel >> (\n -> "String " ++ n))
+                |> List.map (dbFieldToFieldName >> lowerCamelize >> (\n -> "String " ++ n))
                 |> String.join ", "
 
         dbFieldNames =
@@ -481,6 +541,38 @@ dbFieldArrayToCucumber tableName dbFieldArray =
     ]
         |> List.map (\f -> f dbFieldList)
         |> String.join "\n\n"
+
+
+dbFieldArrayToScalaCode : String -> Array DbField -> String
+dbFieldArrayToScalaCode tableName dbFieldArray =
+    let
+        dbFieldList =
+            Array.toList dbFieldArray
+
+        scalaArgsListText =
+            dbFieldList
+                |> List.map (dbFieldToScalaArgs >> (++) "\t\t")
+                |> String.join ",\n"
+
+        scalaNameBindText =
+            dbFieldList
+                |> List.map (dbFieldToScalaNameBind >> (++) "\t\t\t")
+                |> String.join ",\n"
+    in
+    interpolate """object Dummy{0} {
+\tdef create{0}(
+{1},
+\t\tversionNo: Long = 1L
+\t): {0} =
+\t\t{0}.create(
+{2},
+\t\t\tcreatedAt = ZonedDateTime.of(2019, 4, 1, 1, 0, 0, 0, ZoneId.of("UTC"),
+\t\t\tcreatedBy = 1L,
+\t\t\tupdatedAt = ZonedDateTime.of(2019, 4, 1, 1, 0, 0, 0, ZoneId.of("UTC"),
+\t\t\tupdatedBy = 1L,
+\t\t\tversionNo = versionNo
+\t\t)
+}""" [ upperCamelize tableName, scalaArgsListText, scalaNameBindText ]
 
 
 
@@ -715,6 +807,7 @@ type Msg
     | AddDbField
     | DownloadDDL
     | DownloadCucumber
+    | DownloadScala
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
@@ -879,7 +972,10 @@ update msg model =
             ( model, Download.string (tableName ++ ".sql") "text/plain" <| dbFieldArrayToDDL tableName dbFields )
 
         DownloadCucumber ->
-            ( model, Download.string (tableName ++ ".java") "text/plain" <| dbFieldArrayToCucumber tableName dbFields )
+            ( model, Download.string (upperCamelize tableName ++ ".java") "text/plain" <| dbFieldArrayToCucumber tableName dbFields )
+
+        DownloadScala ->
+            ( model, Download.string (upperCamelize tableName ++ ".scala") "text/plain" <| dbFieldArrayToScalaCode tableName dbFields )
 
 
 
@@ -1083,6 +1179,7 @@ view model =
         [ div [ class "downloads" ]
             [ button [ class "button is-primary", onClick DownloadDDL ] [ text "DDL" ]
             , button [ class "button is-primary", onClick DownloadCucumber ] [ text "Cucumber" ]
+            , button [ class "button is-primary", onClick DownloadScala ] [ text "Scala" ]
             ]
         , div [ class "field" ]
             [ div [ class "control" ]
@@ -1166,14 +1263,22 @@ headUpper str =
             String.fromList <| Char.toUpper h :: t
 
 
-lowerCamel : String -> String
-lowerCamel str =
+
+{- lowerCamelize "foo_bar" == fooBar -}
+
+
+lowerCamelize : String -> String
+lowerCamelize str =
     case String.uncons (upperCamelize str) of
         Just ( head, tail ) ->
             String.cons (Char.toLower head) tail
 
         Nothing ->
             str
+
+
+
+{- upperCamelize "foo_bar" == FooBar -}
 
 
 upperCamelize : String -> String

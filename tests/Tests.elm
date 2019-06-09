@@ -1,4 +1,8 @@
-module Tests exposing (dbFieldArrayToCucumberTest, dbFieldArrayToDDLTest)
+module Tests exposing
+    ( dbFieldArrayToCucumberTest
+    , dbFieldArrayToDDLTest
+    , dbFieldArrayToScalaCodeTest
+    )
 
 import Array exposing (Array)
 import Expect exposing (Expectation)
@@ -87,7 +91,7 @@ CREATE TABLE `tables` (
 dbFieldArrayToCucumberTest : Test
 dbFieldArrayToCucumberTest =
     describe "dbFieldArrayToCucumberTest"
-        [ test "Insertメソッドとデータテーブルが生成される" <|
+        [ test "Cucumber用のメソッド群が生成される" <|
             \_ ->
                 let
                     dbFieldArray =
@@ -137,5 +141,63 @@ public void createTables(DataTable dataTable) {
 |id|foo|text|hoge_flag|start_at|enm|
 |1|1|char|true|2019-04-01 00:00:00|DEFAULT|
 */
+""")
+        ]
+
+
+dbFieldArrayToScalaCodeTest : Test
+dbFieldArrayToScalaCodeTest =
+    describe "dbFieldArrayToScalaCodeTest"
+        [ test "Scalaのボイラプレートが生成される" <|
+            \_ ->
+                let
+                    dbFieldArray =
+                        Array.fromList
+                            [ PrimaryKey "id"
+                            , BigInt
+                                { fieldName = "foo"
+                                , fieldLength = 10
+                                , isUnsigned = False
+                                , isNotNull = True
+                                }
+                            , VarChar
+                                { fieldName = "text"
+                                , fieldLength = 10
+                                , isNotNull = False
+                                }
+                            , Boolean
+                                { fieldName = "hoge_flag"
+                                , isNotNull = True
+                                }
+                            , Datetime
+                                { fieldName = "start_at"
+                                , isNotNull = True
+                                }
+                            ]
+                in
+                dbFieldArrayToScalaCode "tables" dbFieldArray
+                    |> Expect.equal (String.trim """
+object DummyTables {
+\tdef createTables(
+\t\tid: Long,
+\t\tfoo: Long,
+\t\ttext: Option[String],
+\t\thogeFlag: Boolean,
+\t\tstartAt: ZonedDateTime,
+\t\tversionNo: Long = 1L
+\t): Tables =
+\t\tTables.create(
+\t\t\tid = id,
+\t\t\tfoo = foo,
+\t\t\ttext = text,
+\t\t\thogeFlag = hogeFlag,
+\t\t\tstartAt = startAt,
+\t\t\tcreatedAt = ZonedDateTime.of(2019, 4, 1, 1, 0, 0, 0, ZoneId.of("UTC"),
+\t\t\tcreatedBy = 1L,
+\t\t\tupdatedAt = ZonedDateTime.of(2019, 4, 1, 1, 0, 0, 0, ZoneId.of("UTC"),
+\t\t\tupdatedBy = 1L,
+\t\t\tversionNo = versionNo
+\t\t)
+}
 """)
         ]
