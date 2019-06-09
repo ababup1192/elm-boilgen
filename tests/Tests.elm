@@ -199,5 +199,22 @@ object DummyTables {
 \t\t\tversionNo = versionNo
 \t\t)
 }
+
+def createTablesJson(
+\tid: Long,
+\tfoo: Long,
+\ttext: Option[String],
+\thogeFlag: Boolean,
+\tstartAt: ZonedDateTime,
+\tversionNo: Long
+): Json =
+\tJson.obj(
+\t\t"id" -> id.toString.asJson,
+\t\t"foo" -> foo.asJson,
+\t\t"text" -> text.asJson,
+\t\t"hogeFlag" -> hogeFlag.asJson,
+\t\t"startAt" -> startAt.toInstant.asJson,
+\t\t"versionNo" -> versionNo.asJson
+\t)
 """)
         ]

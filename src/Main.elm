@@ -273,6 +273,39 @@ dbFieldToScalaArgs dbField =
             ""
 
 
+dbFieldToScalaMapObj : DbField -> String
+dbFieldToScalaMapObj dbField =
+    let
+        decorateOption isNotNull scalaTypes =
+            if isNotNull then
+                scalaTypes
+
+            else
+                "Option[" ++ scalaTypes ++ "]"
+
+        createArgs fieldName rightValue =
+            "\"" ++ lowerCamelize fieldName ++ "\" -> " ++ rightValue
+    in
+    case dbField of
+        PrimaryKey fieldName ->
+            createArgs fieldName <| lowerCamelize fieldName ++ ".toString.asJson"
+
+        BigInt { fieldName, isNotNull } ->
+            createArgs fieldName <| lowerCamelize fieldName ++ ".asJson"
+
+        VarChar { fieldName, isNotNull } ->
+            createArgs fieldName <| lowerCamelize fieldName ++ ".asJson"
+
+        Boolean { fieldName, isNotNull } ->
+            createArgs fieldName <| lowerCamelize fieldName ++ ".asJson"
+
+        Datetime { fieldName, isNotNull } ->
+            createArgs fieldName <| lowerCamelize fieldName ++ ".toInstant.asJson"
+
+        Enum { fieldName, values, isNotNull } ->
+            createArgs fieldName <| lowerCamelize fieldName ++ ".code.asJson"
+
+
 dbFieldToScalaNameBind : DbField -> String
 dbFieldToScalaNameBind dbField =
     let
@@ -543,12 +576,9 @@ dbFieldArrayToCucumber tableName dbFieldArray =
         |> String.join "\n\n"
 
 
-dbFieldArrayToScalaCode : String -> Array DbField -> String
-dbFieldArrayToScalaCode tableName dbFieldArray =
+dbFieldListToDummyTableObject : String -> List DbField -> String
+dbFieldListToDummyTableObject tableName dbFieldList =
     let
-        dbFieldList =
-            Array.toList dbFieldArray
-
         scalaArgsListText =
             dbFieldList
                 |> List.map (dbFieldToScalaArgs >> (++) "\t\t")
@@ -573,6 +603,40 @@ dbFieldArrayToScalaCode tableName dbFieldArray =
 \t\t\tversionNo = versionNo
 \t\t)
 }""" [ upperCamelize tableName, scalaArgsListText, scalaNameBindText ]
+
+
+dbFieldListToCirceJsonMethod : String -> List DbField -> String
+dbFieldListToCirceJsonMethod tableName dbFieldList =
+    let
+        scalaArgsListText =
+            dbFieldList
+                |> List.map (dbFieldToScalaArgs >> (++) "\t")
+                |> String.join ",\n"
+
+        scalaMapObjText =
+            dbFieldList
+                |> List.map (dbFieldToScalaMapObj >> (++) "\t\t")
+                |> String.join ",\n"
+    in
+    interpolate """def create{0}Json(
+{1},
+\tversionNo: Long
+): Json =
+\tJson.obj(
+{2},
+\t\t"versionNo" -> versionNo.asJson
+\t)""" [ upperCamelize tableName, scalaArgsListText, scalaMapObjText ]
+
+
+dbFieldArrayToScalaCode : String -> Array DbField -> String
+dbFieldArrayToScalaCode tableName dbFieldArray =
+    let
+        dbFieldList =
+            Array.toList dbFieldArray
+    in
+    dbFieldListToDummyTableObject tableName dbFieldList
+        ++ "\n\n"
+        ++ dbFieldListToCirceJsonMethod tableName dbFieldList
 
 
 
