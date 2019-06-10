@@ -215,9 +215,9 @@ object DummyTables {
 \t\t\thogeFlag = hogeFlag,
 \t\t\tstartAt = startAt,
 \t\t\tbarStatus = barStatus.code,
-\t\t\tcreatedAt = ZonedDateTime.of(2019, 4, 1, 1, 0, 0, 0, ZoneId.of("UTC"),
+\t\t\tcreatedAt = ZonedDateTime.of(2020, 4, 11, 18, 0, 0, 0, ZoneId.of("UTC")),
 \t\t\tcreatedBy = 1L,
-\t\t\tupdatedAt = ZonedDateTime.of(2019, 4, 1, 1, 0, 0, 0, ZoneId.of("UTC"),
+\t\t\tupdatedAt = ZonedDateTime.of(2020, 4, 11, 18, 0, 0, 0, ZoneId.of("UTC")),
 \t\t\tupdatedBy = 1L,
 \t\t\tversionNo = versionNo
 \t\t)
