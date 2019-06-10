@@ -1512,6 +1512,12 @@ lowerCamelize str =
 upperCamelize : String -> String
 upperCamelize str =
     String.split "_" str
+        |> upperInitialAndConcat
+
+
+upperInitialAndConcat : List String -> String
+upperInitialAndConcat strList =
+    strList
         |> List.map
             (\word ->
                 case String.uncons word of
@@ -1533,18 +1539,7 @@ camelize str =
     case strList of
         firstWord :: tailWord ->
             firstWord
-                ++ (tailWord
-                        |> List.map
-                            (\word ->
-                                case String.uncons word of
-                                    Just ( head, tail ) ->
-                                        String.cons (Char.toUpper head) tail
-
-                                    Nothing ->
-                                        word
-                            )
-                        |> String.concat
-                   )
+                ++ (tailWord |> upperInitialAndConcat)
 
         word ->
             Maybe.withDefault "" <| List.head word
