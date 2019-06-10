@@ -666,7 +666,7 @@ dbFieldListToCirceJsonMethod tableName dbFieldList =
 
         scalaMapObjText =
             dbFieldList
-                |> List.map (\dbField -> dbFieldToScalaMapObj dbField (camelize tableName))
+                |> List.map (\dbField -> dbFieldToScalaMapObj dbField (lowerCamelize tableName))
                 |> String.join ",\n"
     in
     interpolate """def create{0}Json(
@@ -675,7 +675,7 @@ dbFieldListToCirceJsonMethod tableName dbFieldList =
 \tJson.obj(
 {2},
 \t\t"versionNo" -> {1}.versionNo.asJson
-\t)""" [ upperCamelize tableName, camelize tableName, scalaMapObjText ]
+\t)""" [ upperCamelize tableName, lowerCamelize tableName, scalaMapObjText ]
 
 
 dbFieldListToEnums : List DbField -> String
@@ -1512,12 +1512,6 @@ lowerCamelize str =
 upperCamelize : String -> String
 upperCamelize str =
     String.split "_" str
-        |> upperInitialAndConcat
-
-
-upperInitialAndConcat : List String -> String
-upperInitialAndConcat strList =
-    strList
         |> List.map
             (\word ->
                 case String.uncons word of
@@ -1528,18 +1522,3 @@ upperInitialAndConcat strList =
                         word
             )
         |> String.concat
-
-
-camelize : String -> String
-camelize str =
-    let
-        strList =
-            String.split "_" str
-    in
-    case strList of
-        firstWord :: tailWord ->
-            firstWord
-                ++ (tailWord |> upperInitialAndConcat)
-
-        word ->
-            Maybe.withDefault "" <| List.head word
