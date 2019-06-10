@@ -988,6 +988,7 @@ type Msg
     | UpdateEnumValues Index
     | DeleteEnumValue String Index
     | AddDbField
+    | DeleteDbField Index
     | DownloadDDL
     | DownloadCucumber
     | DownloadScala
@@ -1175,6 +1176,9 @@ update msg model =
             , Cmd.none
             )
 
+        DeleteDbField idx ->
+            ( { model | dbFields = Array.removeAt idx dbFields }, Cmd.none )
+
         DownloadDDL ->
             ( model, Download.string (tableName ++ ".sql") "text/plain" <| dbFieldArrayToDDL tableName dbFields )
 
@@ -1218,6 +1222,7 @@ dbFieldToView idx newEnumValue dbField =
             [ div []
                 [ input [ class "input", type_ "text", value fieldName, onInput <| UpdatePrimaryKeyFieldName idx ]
                     []
+                , span [ class "trash-icon", onClick <| DeleteDbField idx ] [ i [ class "fas fa-trash" ] [] ]
                 ]
             , div []
                 [ fieldTypeSelectView idx dbField
@@ -1262,6 +1267,7 @@ dbFieldToView idx newEnumValue dbField =
             [ div []
                 [ input [ class "input", type_ "text", value fieldName, onInput <| UpdateBigIntFieldName idx ]
                     []
+                , span [ class "trash-icon", onClick <| DeleteDbField idx ] [ i [ class "fas fa-trash" ] [] ]
                 ]
             , div []
                 [ fieldTypeSelectView idx dbField
@@ -1284,6 +1290,7 @@ dbFieldToView idx newEnumValue dbField =
             [ div []
                 [ input [ class "input", type_ "text", value fieldName, onInput <| UpdateDbIntFieldName idx ]
                     []
+                , span [ class "trash-icon", onClick <| DeleteDbField idx ] [ i [ class "fas fa-trash" ] [] ]
                 ]
             , div []
                 [ fieldTypeSelectView idx dbField
@@ -1304,6 +1311,7 @@ dbFieldToView idx newEnumValue dbField =
             [ div []
                 [ input [ class "input", type_ "text", value fieldName, onInput <| UpdateVarcharFieldName idx ]
                     []
+                , span [ class "trash-icon", onClick <| DeleteDbField idx ] [ i [ class "fas fa-trash" ] [] ]
                 ]
             , div []
                 [ fieldTypeSelectView idx dbField
@@ -1325,6 +1333,7 @@ dbFieldToView idx newEnumValue dbField =
             [ div []
                 [ input [ class "input", type_ "text", value fieldName, onInput <| UpdateBooleanFieldName idx ]
                     []
+                , span [ class "trash-icon", onClick <| DeleteDbField idx ] [ i [ class "fas fa-trash" ] [] ]
                 ]
             , div []
                 [ fieldTypeSelectView idx dbField
@@ -1344,6 +1353,7 @@ dbFieldToView idx newEnumValue dbField =
             [ div []
                 [ input [ class "input", type_ "text", value fieldName, onInput <| UpdateDatetimeFieldName idx ]
                     []
+                , span [ class "trash-icon", onClick <| DeleteDbField idx ] [ i [ class "fas fa-trash" ] [] ]
                 ]
             , div []
                 [ fieldTypeSelectView idx dbField
@@ -1365,6 +1375,7 @@ dbFieldToView idx newEnumValue dbField =
             [ div []
                 [ input [ class "input", type_ "text", value fieldName, onInput <| UpdateEnumFieldName idx ]
                     []
+                , span [ class "trash-icon", onClick <| DeleteDbField idx ] [ i [ class "fas fa-trash" ] [] ]
                 ]
             , div [ class "enum" ]
                 [ div [ class "layout-enum" ]

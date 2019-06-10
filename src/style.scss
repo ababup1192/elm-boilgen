@@ -15,7 +15,7 @@ body {
 
 .cp-layout-table {
   display: grid;
-  grid-template-columns: 150px 2fr 200px 75px 75px 75px;
+  grid-template-columns: 220px 2fr 100px 70px 70px 70px;
   margin: 0 30px 30px 0;
   border-bottom: 1px solid black;
   border-left: 1px solid black;
@@ -94,6 +94,15 @@ body {
     cursor: default;
 
   }
+}
+
+.trash-icon {
+  margin-left: 10px;
+  cursor: pointer;
+}
+
+.trash-icon:hover {
+  color: #EE6557;
 }
 
 .checkbox label input[type="checkbox"] {
