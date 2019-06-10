@@ -173,6 +173,11 @@ dbFieldArrayToScalaCodeTest =
                                 { fieldName = "start_at"
                                 , isNotNull = True
                                 }
+                            , Enum
+                                { fieldName = "bar_status"
+                                , values = [ "UP", "DOWN", "LEFT", "RIGHT" ]
+                                , isNotNull = True
+                                }
                             ]
                 in
                 dbFieldArrayToScalaCode "tables" dbFieldArray
@@ -184,6 +189,7 @@ object DummyTables {
 \t\ttext: Option[String],
 \t\thogeFlag: Boolean,
 \t\tstartAt: ZonedDateTime,
+\t\tbarStatus: BarStatus,
 \t\tversionNo: Long = 1L
 \t): Tables =
 \t\tTables.create(
@@ -192,6 +198,7 @@ object DummyTables {
 \t\t\ttext = text,
 \t\t\thogeFlag = hogeFlag,
 \t\t\tstartAt = startAt,
+\t\t\tbarStatus = barStatus.code,
 \t\t\tcreatedAt = ZonedDateTime.of(2019, 4, 1, 1, 0, 0, 0, ZoneId.of("UTC"),
 \t\t\tcreatedBy = 1L,
 \t\t\tupdatedAt = ZonedDateTime.of(2019, 4, 1, 1, 0, 0, 0, ZoneId.of("UTC"),
@@ -206,6 +213,7 @@ def createTablesJson(
 \ttext: Option[String],
 \thogeFlag: Boolean,
 \tstartAt: ZonedDateTime,
+\tbarStatus: BarStatus,
 \tversionNo: Long
 ): Json =
 \tJson.obj(
@@ -214,7 +222,22 @@ def createTablesJson(
 \t\t"text" -> text.asJson,
 \t\t"hogeFlag" -> hogeFlag.asJson,
 \t\t"startAt" -> startAt.toInstant.asJson,
+\t\t"barStatus" -> barStatus.code.asJson,
 \t\t"versionNo" -> versionNo.asJson
 \t)
+
+abstract class BarStatus(val code: String, value: String)
+
+object BarStatus {
+
+\tcase object UP extends BarStatus("UP", /* TODO */ "")
+
+\tcase object DOWN extends BarStatus("DOWN", /* TODO */ "")
+
+\tcase object LEFT extends BarStatus("LEFT", /* TODO */ "")
+
+\tcase object RIGHT extends BarStatus("RIGHT", /* TODO */ "")
+
+}
 """)
         ]

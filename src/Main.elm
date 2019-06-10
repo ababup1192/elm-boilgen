@@ -270,7 +270,7 @@ dbFieldToScalaArgs dbField =
             createArgs fieldName isNotNull "ZonedDateTime"
 
         Enum { fieldName, values, isNotNull } ->
-            ""
+            createArgs fieldName isNotNull <| upperCamelize fieldName
 
 
 dbFieldToScalaMapObj : DbField -> String
@@ -329,7 +329,7 @@ dbFieldToScalaNameBind dbField =
             bindText fieldName
 
         Enum { fieldName } ->
-            bindText fieldName
+            bindText fieldName ++ ".code"
 
 
 isPrimaryKey : DbField -> Bool
@@ -628,6 +628,36 @@ dbFieldListToCirceJsonMethod tableName dbFieldList =
 \t)""" [ upperCamelize tableName, scalaArgsListText, scalaMapObjText ]
 
 
+dbFieldListToEnums : List DbField -> String
+dbFieldListToEnums dbFieldList =
+    dbFieldList
+        |> List.filter isEnum
+        |> List.map
+            (\dbField ->
+                case dbField of
+                    Enum { fieldName, values } ->
+                        let
+                            toCaseObject value =
+                                interpolate """\tcase object {0} extends {1}("{0}", /* TODO */ "")""" [ value, upperCamelize fieldName ]
+
+                            valueCaseObjects =
+                                values |> List.map toCaseObject |> String.join "\n\n"
+                        in
+                        interpolate """abstract class {0}(val code: String, value: String)
+
+object {0} {
+
+{1}
+
+}"""
+                            [ upperCamelize fieldName, valueCaseObjects ]
+
+                    _ ->
+                        ""
+            )
+        |> String.join "\n\n"
+
+
 dbFieldArrayToScalaCode : String -> Array DbField -> String
 dbFieldArrayToScalaCode tableName dbFieldArray =
     let
@@ -637,6 +667,8 @@ dbFieldArrayToScalaCode tableName dbFieldArray =
     dbFieldListToDummyTableObject tableName dbFieldList
         ++ "\n\n"
         ++ dbFieldListToCirceJsonMethod tableName dbFieldList
+        ++ "\n\n"
+        ++ dbFieldListToEnums dbFieldList
 
 
 
