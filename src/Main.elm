@@ -39,13 +39,13 @@ init _ =
                 [ PrimaryKey "id"
                 , BigInt
                     { fieldName = "bigint"
-                    , fieldLength = 20
+                    , fieldLengthMaybe = Just 20
                     , isUnsigned = True
                     , isNotNull = True
                     }
                 , VarChar
                     { fieldName = "text"
-                    , fieldLength = 10
+                    , fieldLengthMaybe = Just 10
                     , isNotNull = True
                     }
                 ]
@@ -57,7 +57,7 @@ init _ =
 
 initBigint : DbField
 initBigint =
-    BigInt { fieldName = "", fieldLength = 10, isUnsigned = False, isNotNull = True }
+    BigInt { fieldName = "", fieldLengthMaybe = Just 10, isUnsigned = False, isNotNull = True }
 
 
 initDbInt : DbField
@@ -67,7 +67,7 @@ initDbInt =
 
 initVarchar : DbField
 initVarchar =
-    VarChar { fieldName = "", fieldLength = 5, isNotNull = True }
+    VarChar { fieldName = "", fieldLengthMaybe = Just 50, isNotNull = True }
 
 
 initBoolean : DbField
@@ -87,7 +87,7 @@ initEnum =
 
 type alias BigInt_ =
     { fieldName : String
-    , fieldLength : Int
+    , fieldLengthMaybe : Maybe Int
     , isUnsigned : Bool
     , isNotNull : Bool
     }
@@ -102,7 +102,7 @@ type alias DbInt_ =
 
 type alias VarChar_ =
     { fieldName : String
-    , fieldLength : Int
+    , fieldLengthMaybe : Maybe Int
     , isNotNull : Bool
     }
 
@@ -142,10 +142,10 @@ dbFieldToDDL dbField =
         PrimaryKey fieldName ->
             "`" ++ fieldName ++ "` bigint(20) unsigned NOT NULL AUTO_INCREMENT"
 
-        BigInt { fieldName, fieldLength, isUnsigned, isNotNull } ->
-            interpolate "`{0}` bigint({1}){2}{3}"
+        BigInt { fieldName, fieldLengthMaybe, isUnsigned, isNotNull } ->
+            interpolate "`{0}` bigint{1}{2}{3}"
                 [ fieldName
-                , String.fromInt fieldLength
+                , Maybe.withDefault "" <| Maybe.map (\fieldLength -> "(" ++ String.fromInt fieldLength ++ ")") fieldLengthMaybe
                 , visibleWord isUnsigned " unsigned"
                 , visibleWord isNotNull " NOT NULL"
                 ]
@@ -157,10 +157,10 @@ dbFieldToDDL dbField =
                 , visibleWord isNotNull " NOT NULL"
                 ]
 
-        VarChar { fieldName, fieldLength, isNotNull } ->
-            interpolate "`{0}` varchar({1}){2}"
+        VarChar { fieldName, fieldLengthMaybe, isNotNull } ->
+            interpolate "`{0}` varchar{1}{2}"
                 [ fieldName
-                , String.fromInt fieldLength
+                , Maybe.withDefault "" <| Maybe.map (\fieldLength -> "(" ++ String.fromInt fieldLength ++ ")") fieldLengthMaybe
                 , visibleWord isNotNull " NOT NULL"
                 ]
 
@@ -488,10 +488,10 @@ dbFieldArrayToDDL tableName dbFieldArray =
              <|
                 Array.fromList
                     [ Datetime { fieldName = "created_at", isNotNull = True }
-                    , BigInt { fieldName = "created_by", fieldLength = 20, isUnsigned = True, isNotNull = True }
+                    , BigInt { fieldName = "created_by", fieldLengthMaybe = Just 20, isUnsigned = True, isNotNull = True }
                     , Datetime { fieldName = "updated_at", isNotNull = True }
-                    , BigInt { fieldName = "updated_by", fieldLength = 20, isUnsigned = True, isNotNull = True }
-                    , BigInt { fieldName = "version_no", fieldLength = 20, isUnsigned = True, isNotNull = True }
+                    , BigInt { fieldName = "updated_by", fieldLengthMaybe = Just 20, isUnsigned = True, isNotNull = True }
+                    , BigInt { fieldName = "version_no", fieldLengthMaybe = Just 20, isUnsigned = True, isNotNull = True }
                     ]
             )
                 |> Array.map dbFieldToDDL
@@ -801,8 +801,7 @@ updateBigIntLength lenText dbField =
         BigInt bigInt ->
             BigInt
                 { bigInt
-                    | fieldLength =
-                        Maybe.withDefault bigInt.fieldLength <| String.toInt lenText
+                    | fieldLengthMaybe = String.toInt lenText
                 }
 
         _ ->
@@ -835,8 +834,8 @@ updateVarcharLength lenText dbField =
         VarChar varchar ->
             VarChar
                 { varchar
-                    | fieldLength =
-                        Maybe.withDefault varchar.fieldLength <| String.toInt lenText
+                    | fieldLengthMaybe =
+                        String.toInt lenText
                 }
 
         _ ->
@@ -1262,7 +1261,7 @@ dbFieldToView idx newEnumValue dbField =
                 ]
             ]
 
-        BigInt { fieldName, fieldLength, isUnsigned, isNotNull } ->
+        BigInt { fieldName, fieldLengthMaybe, isUnsigned, isNotNull } ->
             [ div []
                 [ input [ class "input", type_ "text", value fieldName, onInput <| UpdateBigIntFieldName idx ]
                     []
@@ -1272,7 +1271,7 @@ dbFieldToView idx newEnumValue dbField =
                 [ fieldTypeSelectView idx dbField
                 ]
             , div []
-                [ input [ class "input", type_ "number", value <| String.fromInt fieldLength, onInput <| UpdateBigIntLength idx ]
+                [ input [ class "input", type_ "number", value <| Maybe.withDefault "" <| Maybe.map String.fromInt fieldLengthMaybe, onInput <| UpdateBigIntLength idx ]
                     []
                 ]
             , div []
@@ -1306,7 +1305,7 @@ dbFieldToView idx newEnumValue dbField =
                 []
             ]
 
-        VarChar { fieldName, fieldLength, isNotNull } ->
+        VarChar { fieldName, fieldLengthMaybe, isNotNull } ->
             [ div []
                 [ input [ class "input", type_ "text", value fieldName, onInput <| UpdateVarcharFieldName idx ]
                     []
@@ -1316,7 +1315,7 @@ dbFieldToView idx newEnumValue dbField =
                 [ fieldTypeSelectView idx dbField
                 ]
             , div []
-                [ input [ class "input", type_ "number", value <| String.fromInt fieldLength, onInput <| UpdateVarcharLength idx ]
+                [ input [ class "input", type_ "number", value <| Maybe.withDefault "" <| Maybe.map String.fromInt fieldLengthMaybe, onInput <| UpdateVarcharLength idx ]
                     []
                 ]
             , div []

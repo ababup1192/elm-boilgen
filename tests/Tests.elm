@@ -22,19 +22,19 @@ dbFieldArrayToDDLTest =
                             [ PrimaryKey "id"
                             , BigInt
                                 { fieldName = "hoge_id"
-                                , fieldLength = 20
+                                , fieldLengthMaybe = Just 20
                                 , isUnsigned = True
                                 , isNotNull = True
                                 }
                             , BigInt
                                 { fieldName = "foo"
-                                , fieldLength = 5
+                                , fieldLengthMaybe = Just 5
                                 , isUnsigned = False
                                 , isNotNull = True
                                 }
                             , BigInt
                                 { fieldName = "bar"
-                                , fieldLength = 10
+                                , fieldLengthMaybe = Just 10
                                 , isUnsigned = False
                                 , isNotNull = False
                                 }
@@ -45,12 +45,12 @@ dbFieldArrayToDDLTest =
                                 }
                             , VarChar
                                 { fieldName = "aaa"
-                                , fieldLength = 10
+                                , fieldLengthMaybe = Just 10
                                 , isNotNull = True
                                 }
                             , VarChar
                                 { fieldName = "bbb"
-                                , fieldLength = 20
+                                , fieldLengthMaybe = Just 20
                                 , isNotNull = False
                                 }
                             , Boolean
@@ -105,7 +105,7 @@ dbFieldArrayToCucumberTest =
                             [ PrimaryKey "id"
                             , BigInt
                                 { fieldName = "foo"
-                                , fieldLength = 10
+                                , fieldLengthMaybe = Just 10
                                 , isUnsigned = False
                                 , isNotNull = True
                                 }
@@ -116,7 +116,7 @@ dbFieldArrayToCucumberTest =
                                 }
                             , VarChar
                                 { fieldName = "text"
-                                , fieldLength = 10
+                                , fieldLengthMaybe = Just 10
                                 , isNotNull = False
                                 }
                             , Boolean
@@ -167,7 +167,7 @@ dbFieldArrayToScalaCodeTest =
                             [ PrimaryKey "id"
                             , BigInt
                                 { fieldName = "foo"
-                                , fieldLength = 10
+                                , fieldLengthMaybe = Just 10
                                 , isUnsigned = False
                                 , isNotNull = True
                                 }
@@ -178,7 +178,7 @@ dbFieldArrayToScalaCodeTest =
                                 }
                             , VarChar
                                 { fieldName = "text"
-                                , fieldLength = 10
+                                , fieldLengthMaybe = Just 10
                                 , isNotNull = False
                                 }
                             , Boolean
