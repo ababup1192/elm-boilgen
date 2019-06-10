@@ -627,13 +627,16 @@ dbFieldArrayToCucumber tableName dbFieldArray =
 dbFieldListToDummyTableObject : String -> List DbField -> String
 dbFieldListToDummyTableObject tableName dbFieldList =
     let
+        dbNotPrimaryFieldList =
+            dbFieldList |> List.filter (not << isPrimaryKey)
+
         scalaArgsListText =
-            dbFieldList
+            dbNotPrimaryFieldList
                 |> List.map (dbFieldToScalaArgs >> (++) "\t\t")
                 |> String.join ",\n"
 
         scalaNameBindText =
-            dbFieldList
+            dbNotPrimaryFieldList
                 |> List.map (dbFieldToScalaNameBind >> (++) "\t\t\t")
                 |> String.join ",\n"
     in

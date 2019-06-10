@@ -200,7 +200,6 @@ dbFieldArrayToScalaCodeTest =
                     |> Expect.equal (String.trim """
 object DummyTables {
 \tdef createTables(
-\t\tid: Long,
 \t\tfoo: Long,
 \t\tho: Int,
 \t\ttext: Option[String],
@@ -210,7 +209,6 @@ object DummyTables {
 \t\tversionNo: Long = 1L
 \t): Tables =
 \t\tTables.create(
-\t\t\tid = id,
 \t\t\tfoo = foo,
 \t\t\tho = ho,
 \t\t\ttext = text,
