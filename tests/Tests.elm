@@ -38,6 +38,11 @@ dbFieldArrayToDDLTest =
                                 , isUnsigned = False
                                 , isNotNull = False
                                 }
+                            , DbInt
+                                { fieldName = "ho"
+                                , isUnsigned = True
+                                , isNotNull = True
+                                }
                             , VarChar
                                 { fieldName = "aaa"
                                 , fieldLength = 10
@@ -70,6 +75,7 @@ CREATE TABLE `tables` (
 \t`hoge_id` bigint(20) unsigned NOT NULL,
 \t`foo` bigint(5) NOT NULL,
 \t`bar` bigint(10),
+\t`ho` int unsigned NOT NULL,
 \t`aaa` varchar(10) NOT NULL,
 \t`bbb` varchar(20),
 \t`bool` boolean NOT NULL,
@@ -103,6 +109,11 @@ dbFieldArrayToCucumberTest =
                                 , isUnsigned = False
                                 , isNotNull = True
                                 }
+                            , DbInt
+                                { fieldName = "ho"
+                                , isUnsigned = True
+                                , isNotNull = True
+                                }
                             , VarChar
                                 { fieldName = "text"
                                 , fieldLength = 10
@@ -125,21 +136,21 @@ dbFieldArrayToCucumberTest =
                 in
                 dbFieldArrayToCucumber "tables" dbFieldArray
                     |> Expect.equal (String.trim """
-private String createTablesBy(String id, String foo, String text, String hogeFlag, String startAt, String enm) {
-\treturn String.format("INSERT INTO `tables` (id, foo, text, hoge_flag, start_at, enm, created_at, created_by, updated_at, updated_by, version_no) " +
+private String createTablesBy(String id, String foo, String ho, String text, String hogeFlag, String startAt, String enm) {
+\treturn String.format("INSERT INTO `tables` (id, foo, ho, text, hoge_flag, start_at, enm, created_at, created_by, updated_at, updated_by, version_no) " +
 \t\t"VALUES " +
-\t\t"(%s, %s, %s, %s, '%s', %s,'2019-04-01', 1, '2019-04-01', 1, 1);", id, foo, nullableTextToStr(text), hogeFlag, startAt, nullableTextToStr(enm));
+\t\t"(%s, %s, %s, %s, %s, '%s', %s,'2019-04-01', 1, '2019-04-01', 1, 1);", id, foo, ho, nullableTextToStr(text), hogeFlag, startAt, nullableTextToStr(enm));
 }
 
 public void createTables(DataTable dataTable) {
 \tdataTable.asMaps().stream().map(dtm -> this.createTablesBy(
-\t\tdtm.get("id"), dtm.get("foo"), dtm.get("text"), dtm.get("hoge_flag"), dtm.get("start_at"), dtm.get("enm")
+\t\tdtm.get("id"), dtm.get("foo"), dtm.get("ho"), dtm.get("text"), dtm.get("hoge_flag"), dtm.get("start_at"), dtm.get("enm")
 \t)).forEach(this::executeStatement);
 }
 
 /*
-|id|foo|text|hoge_flag|start_at|enm|
-|1|1|char|true|2019-04-01 00:00:00|DEFAULT|
+|id|foo|ho|text|hoge_flag|start_at|enm|
+|1|1|1|char|true|2019-04-01 00:00:00|DEFAULT|
 */
 """)
         ]
@@ -158,6 +169,11 @@ dbFieldArrayToScalaCodeTest =
                                 { fieldName = "foo"
                                 , fieldLength = 10
                                 , isUnsigned = False
+                                , isNotNull = True
+                                }
+                            , DbInt
+                                { fieldName = "ho"
+                                , isUnsigned = True
                                 , isNotNull = True
                                 }
                             , VarChar
@@ -186,6 +202,7 @@ object DummyTables {
 \tdef createTables(
 \t\tid: Long,
 \t\tfoo: Long,
+\t\tho: Int,
 \t\ttext: Option[String],
 \t\thogeFlag: Boolean,
 \t\tstartAt: ZonedDateTime,
@@ -195,6 +212,7 @@ object DummyTables {
 \t\tTables.create(
 \t\t\tid = id,
 \t\t\tfoo = foo,
+\t\t\tho = ho,
 \t\t\ttext = text,
 \t\t\thogeFlag = hogeFlag,
 \t\t\tstartAt = startAt,
@@ -210,6 +228,7 @@ object DummyTables {
 def createTablesJson(
 \tid: Long,
 \tfoo: Long,
+\tho: Int,
 \ttext: Option[String],
 \thogeFlag: Boolean,
 \tstartAt: ZonedDateTime,
@@ -219,6 +238,7 @@ def createTablesJson(
 \tJson.obj(
 \t\t"id" -> id.toString.asJson,
 \t\t"foo" -> foo.asJson,
+\t\t"ho" -> ho.asJson,
 \t\t"text" -> text.asJson,
 \t\t"hogeFlag" -> hogeFlag.asJson,
 \t\t"startAt" -> startAt.toInstant.asJson,

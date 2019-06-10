@@ -57,7 +57,12 @@ init _ =
 
 initBigint : DbField
 initBigint =
-    BigInt { fieldName = "", fieldLength = 5, isUnsigned = False, isNotNull = True }
+    BigInt { fieldName = "", fieldLength = 10, isUnsigned = False, isNotNull = True }
+
+
+initDbInt : DbField
+initDbInt =
+    DbInt { fieldName = "", isUnsigned = False, isNotNull = True }
 
 
 initVarchar : DbField
@@ -83,6 +88,13 @@ initEnum =
 type alias BigInt_ =
     { fieldName : String
     , fieldLength : Int
+    , isUnsigned : Bool
+    , isNotNull : Bool
+    }
+
+
+type alias DbInt_ =
+    { fieldName : String
     , isUnsigned : Bool
     , isNotNull : Bool
     }
@@ -117,6 +129,7 @@ type alias Enum_ =
 type DbField
     = PrimaryKey String
     | BigInt BigInt_
+    | DbInt DbInt_
     | VarChar VarChar_
     | Boolean Boolean_
     | Datetime Datetime_
@@ -133,6 +146,13 @@ dbFieldToDDL dbField =
             interpolate "`{0}` bigint({1}){2}{3}"
                 [ fieldName
                 , String.fromInt fieldLength
+                , visibleWord isUnsigned " unsigned"
+                , visibleWord isNotNull " NOT NULL"
+                ]
+
+        DbInt { fieldName, isUnsigned, isNotNull } ->
+            interpolate "`{0}` int{1}{2}"
+                [ fieldName
                 , visibleWord isUnsigned " unsigned"
                 , visibleWord isNotNull " NOT NULL"
                 ]
@@ -183,6 +203,9 @@ dbFieldToFormatArg dbField =
         BigInt { fieldName } ->
             lowerCamelize fieldName
 
+        DbInt { fieldName } ->
+            lowerCamelize fieldName
+
         VarChar { fieldName, isNotNull } ->
             nullableWrapper isNotNull fieldName
 
@@ -205,6 +228,9 @@ dbFieldToFieldName dbField =
         BigInt { fieldName } ->
             fieldName
 
+        DbInt { fieldName } ->
+            fieldName
+
         VarChar { fieldName } ->
             fieldName
 
@@ -225,6 +251,9 @@ dbFieldToDataTableValue dbField =
             "1"
 
         BigInt _ ->
+            "1"
+
+        DbInt _ ->
             "1"
 
         VarChar _ ->
@@ -260,6 +289,9 @@ dbFieldToScalaArgs dbField =
         BigInt { fieldName, isNotNull } ->
             createArgs fieldName isNotNull "Long"
 
+        DbInt { fieldName, isNotNull } ->
+            createArgs fieldName isNotNull "Int"
+
         VarChar { fieldName, isNotNull } ->
             createArgs fieldName isNotNull "String"
 
@@ -293,6 +325,9 @@ dbFieldToScalaMapObj dbField =
         BigInt { fieldName, isNotNull } ->
             createArgs fieldName <| lowerCamelize fieldName ++ ".asJson"
 
+        DbInt { fieldName, isNotNull } ->
+            createArgs fieldName <| lowerCamelize fieldName ++ ".asJson"
+
         VarChar { fieldName, isNotNull } ->
             createArgs fieldName <| lowerCamelize fieldName ++ ".asJson"
 
@@ -317,6 +352,9 @@ dbFieldToScalaNameBind dbField =
             bindText fieldName
 
         BigInt { fieldName } ->
+            bindText fieldName
+
+        DbInt { fieldName } ->
             bindText fieldName
 
         VarChar { fieldName } ->
@@ -346,6 +384,16 @@ isBigint : DbField -> Bool
 isBigint dbField =
     case dbField of
         BigInt _ ->
+            True
+
+        _ ->
+            False
+
+
+isDbInt : DbField -> Bool
+isDbInt dbField =
+    case dbField of
+        DbInt _ ->
             True
 
         _ ->
@@ -695,6 +743,16 @@ updateBigIntFieldName fieldName dbField =
             dbField
 
 
+updateDbIntFieldName : String -> DbField -> DbField
+updateDbIntFieldName fieldName dbField =
+    case dbField of
+        DbInt dbInt ->
+            DbInt { dbInt | fieldName = fieldName }
+
+        _ ->
+            dbField
+
+
 updateBigIntTurnUnsigned : DbField -> DbField
 updateBigIntTurnUnsigned dbField =
     case dbField of
@@ -705,11 +763,31 @@ updateBigIntTurnUnsigned dbField =
             dbField
 
 
+updateDbIntTurnUnsigned : DbField -> DbField
+updateDbIntTurnUnsigned dbField =
+    case dbField of
+        DbInt dbInt ->
+            DbInt { dbInt | isUnsigned = not dbInt.isUnsigned }
+
+        _ ->
+            dbField
+
+
 updateBigIntTurnNotNull : DbField -> DbField
 updateBigIntTurnNotNull dbField =
     case dbField of
         BigInt bigInt ->
             BigInt { bigInt | isNotNull = not bigInt.isNotNull }
+
+        _ ->
+            dbField
+
+
+updateDbIntTurnNotNull : DbField -> DbField
+updateDbIntTurnNotNull dbField =
+    case dbField of
+        DbInt dbInt ->
+            DbInt { dbInt | isNotNull = not dbInt.isNotNull }
 
         _ ->
             dbField
@@ -860,6 +938,9 @@ typeTextToInitDbField typeText =
         "bigint" ->
             initBigint
 
+        "int" ->
+            initDbInt
+
         "varchar" ->
             initVarchar
 
@@ -884,12 +965,15 @@ type Msg
     = UpdateTableName String
     | UpdatePrimaryKeyFieldName Index String
     | UpdateBigIntFieldName Index String
+    | UpdateDbIntFieldName Index String
     | UpdateVarcharFieldName Index String
     | UpdateBooleanFieldName Index String
     | UpdateDatetimeFieldName Index String
     | UpdateEnumFieldName Index String
     | UpdateBigIntTurnUnsigned Index
     | UpdateBigIntTurnNotNull Index
+    | UpdateDbIntTurnUnsigned Index
+    | UpdateDbIntTurnNotNull Index
     | UpdateVarcharTurnNotNull Index
     | UpdateBooleanTurnNotNull Index
     | UpdateDatetimeTurnNotNull Index
@@ -928,6 +1012,14 @@ update msg model =
             ( { model
                 | dbFields =
                     Array.update idx (updateBigIntFieldName fieldName) dbFields
+              }
+            , Cmd.none
+            )
+
+        UpdateDbIntFieldName idx fieldName ->
+            ( { model
+                | dbFields =
+                    Array.update idx (updateDbIntFieldName fieldName) dbFields
               }
             , Cmd.none
             )
@@ -972,10 +1064,26 @@ update msg model =
             , Cmd.none
             )
 
+        UpdateDbIntTurnUnsigned idx ->
+            ( { model
+                | dbFields =
+                    Array.update idx updateDbIntTurnUnsigned dbFields
+              }
+            , Cmd.none
+            )
+
         UpdateBigIntTurnNotNull idx ->
             ( { model
                 | dbFields =
                     Array.update idx updateBigIntTurnNotNull dbFields
+              }
+            , Cmd.none
+            )
+
+        UpdateDbIntTurnNotNull idx ->
+            ( { model
+                | dbFields =
+                    Array.update idx updateDbIntTurnNotNull dbFields
               }
             , Cmd.none
             )
@@ -1086,6 +1194,8 @@ fieldTypeSelectView idx dbField =
                 [ text "PRIMARY KEY" ]
             , option [ selected <| isBigint dbField, value "bigint" ]
                 [ text "BIGINT" ]
+            , option [ selected <| isDbInt dbField, value "int" ]
+                [ text "INT" ]
             , option [ selected <| isVarChar dbField, value "varchar" ]
                 [ text "VARCHAR" ]
             , option [ selected <| isBoolean dbField, value "boolean" ]
@@ -1162,6 +1272,26 @@ dbFieldToView idx newEnumValue dbField =
                 ]
             , div []
                 [ checkboxView isNotNull <| UpdateBigIntTurnNotNull idx
+                ]
+            , div []
+                []
+            ]
+
+        DbInt { fieldName, isUnsigned, isNotNull } ->
+            [ div []
+                [ input [ class "input", type_ "text", value fieldName, onInput <| UpdateDbIntFieldName idx ]
+                    []
+                ]
+            , div []
+                [ fieldTypeSelectView idx dbField
+                ]
+            , div []
+                []
+            , div []
+                [ checkboxView isUnsigned <| UpdateDbIntTurnUnsigned idx
+                ]
+            , div []
+                [ checkboxView isNotNull <| UpdateDbIntTurnNotNull idx
                 ]
             , div []
                 []
