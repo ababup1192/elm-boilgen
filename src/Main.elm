@@ -305,8 +305,8 @@ dbFieldToScalaArgs dbField =
             createArgs fieldName isNotNull <| upperCamelize fieldName
 
 
-dbFieldToScalaMapObj : DbField -> String
-dbFieldToScalaMapObj dbField =
+dbFieldToScalaMapObj : DbField -> String -> String
+dbFieldToScalaMapObj dbField tableName =
     let
         decorateOption isNotNull scalaTypes =
             if isNotNull then
@@ -316,7 +316,7 @@ dbFieldToScalaMapObj dbField =
                 "Option[" ++ scalaTypes ++ "]"
 
         createArgs fieldName rightValue =
-            "\"" ++ lowerCamelize fieldName ++ "\" -> " ++ rightValue
+            "\t\t\"" ++ lowerCamelize fieldName ++ "\" -> " ++ tableName ++ "." ++ rightValue
     in
     case dbField of
         PrimaryKey fieldName ->
@@ -666,17 +666,16 @@ dbFieldListToCirceJsonMethod tableName dbFieldList =
 
         scalaMapObjText =
             dbFieldList
-                |> List.map (dbFieldToScalaMapObj >> (++) "\t\t")
+                |> List.map (\dbField -> dbFieldToScalaMapObj dbField (lowerCamelize tableName))
                 |> String.join ",\n"
     in
     interpolate """def create{0}Json(
-{1},
-\tversionNo: Long
+\t{1}: {0}
 ): Json =
 \tJson.obj(
 {2},
-\t\t"versionNo" -> versionNo.asJson
-\t)""" [ upperCamelize tableName, scalaArgsListText, scalaMapObjText ]
+\t\t"versionNo" -> {1}.versionNo.asJson
+\t)""" [ upperCamelize tableName, lowerCamelize tableName, scalaMapObjText ]
 
 
 dbFieldListToEnums : List DbField -> String

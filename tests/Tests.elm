@@ -224,24 +224,17 @@ object DummyTables {
 }
 
 def createTablesJson(
-\tid: Long,
-\tfoo: Long,
-\tho: Int,
-\ttext: Option[String],
-\thogeFlag: Boolean,
-\tstartAt: ZonedDateTime,
-\tbarStatus: BarStatus,
-\tversionNo: Long
+\ttables: Tables
 ): Json =
 \tJson.obj(
-\t\t"id" -> id.toString.asJson,
-\t\t"foo" -> foo.asJson,
-\t\t"ho" -> ho.asJson,
-\t\t"text" -> text.asJson,
-\t\t"hogeFlag" -> hogeFlag.asJson,
-\t\t"startAt" -> startAt.toInstant.asJson,
-\t\t"barStatus" -> barStatus.code.asJson,
-\t\t"versionNo" -> versionNo.asJson
+\t\t"id" -> tables.id.toString.asJson,
+\t\t"foo" -> tables.foo.asJson,
+\t\t"ho" -> tables.ho.asJson,
+\t\t"text" -> tables.text.asJson,
+\t\t"hogeFlag" -> tables.hogeFlag.asJson,
+\t\t"startAt" -> tables.startAt.toInstant.asJson,
+\t\t"barStatus" -> tables.barStatus.code.asJson,
+\t\t"versionNo" -> tables.versionNo.asJson
 \t)
 
 abstract class BarStatus(val code: String, value: String)
