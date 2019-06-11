@@ -1,10 +1,11 @@
-module Main exposing
+port module Main exposing
     ( DbField(..)
     , Model
     , Msg(..)
     , dbFieldArrayToCucumber
     , dbFieldArrayToDDL
     , dbFieldArrayToScalaCode
+    , dbFieldsDecoder
     , init
     , main
     , update
@@ -19,8 +20,145 @@ import Html exposing (..)
 import Html.Attributes exposing (..)
 import Html.Events exposing (..)
 import Json.Decode as JD
+import Json.Encode as JE
 import String.Interpolate exposing (interpolate)
 import Task as Task
+
+
+
+---- PORTS ----
+
+
+port saveDbFields : JE.Value -> Cmd msg
+
+
+port clearDbFields : () -> Cmd msg
+
+
+dbFieldsEncoder : Array DbField -> JE.Value
+dbFieldsEncoder dbFields =
+    JE.array dbFieldEncoder dbFields
+
+
+dbFieldEncoder : DbField -> JE.Value
+dbFieldEncoder dbField =
+    case dbField of
+        PrimaryKey fieldName ->
+            JE.object
+                [ ( "type_", JE.string "primary" )
+                , ( "fieldName", JE.string fieldName )
+                ]
+
+        BigInt { fieldName, fieldLengthMaybe, isUnsigned, isNotNull } ->
+            JE.object
+                [ ( "type_", JE.string "bigint" )
+                , ( "fieldName", JE.string fieldName )
+                , ( "fieldLengthMaybe", maybeIntEncoder fieldLengthMaybe )
+                , ( "isUnsigned", JE.bool isUnsigned )
+                , ( "isNotNull", JE.bool isNotNull )
+                ]
+
+        DbInt { fieldName, isUnsigned, isNotNull } ->
+            JE.object
+                [ ( "type_", JE.string "int" )
+                , ( "fieldName", JE.string fieldName )
+                , ( "isUnsigned", JE.bool isUnsigned )
+                , ( "isNotNull", JE.bool isNotNull )
+                ]
+
+        VarChar { fieldName, fieldLengthMaybe, isNotNull } ->
+            JE.object
+                [ ( "type_", JE.string "varchar" )
+                , ( "fieldName", JE.string fieldName )
+                , ( "fieldLengthMaybe", maybeIntEncoder fieldLengthMaybe )
+                , ( "isNotNull", JE.bool isNotNull )
+                ]
+
+        Boolean { fieldName, isNotNull } ->
+            JE.object
+                [ ( "type_", JE.string "boolean" )
+                , ( "fieldName", JE.string fieldName )
+                , ( "isNotNull", JE.bool isNotNull )
+                ]
+
+        Datetime { fieldName, isNotNull } ->
+            JE.object
+                [ ( "type_", JE.string "datetime" )
+                , ( "fieldName", JE.string fieldName )
+                , ( "isNotNull", JE.bool isNotNull )
+                ]
+
+        Enum { fieldName, values, isNotNull } ->
+            JE.object
+                [ ( "type_", JE.string "enum" )
+                , ( "fieldName", JE.string fieldName )
+                , ( "values", JE.list JE.string values )
+                , ( "isNotNull", JE.bool isNotNull )
+                ]
+
+
+dbFieldsDecoder : JD.Decoder (Array DbField)
+dbFieldsDecoder =
+    JD.array
+        dbFieldDecoder
+
+
+dbFieldDecoder : JD.Decoder DbField
+dbFieldDecoder =
+    JD.field "type_" JD.string
+        |> JD.andThen dbFieldDecoderHelper
+
+
+dbFieldDecoderHelper : String -> JD.Decoder DbField
+dbFieldDecoderHelper typeText =
+    case typeText of
+        "primary" ->
+            JD.map PrimaryKey
+                (JD.field "fieldName" JD.string)
+
+        "bigint" ->
+            JD.map4 BigInt_
+                (JD.field "fieldName" JD.string)
+                (JD.field "fieldLengthMaybe" <| JD.maybe JD.int)
+                (JD.field "isUnsigned" JD.bool)
+                (JD.field "isNotNull" JD.bool)
+                |> JD.map BigInt
+
+        "int" ->
+            JD.map3 DbInt_
+                (JD.field "fieldName" JD.string)
+                (JD.field "isUnsigned" JD.bool)
+                (JD.field "isNotNull" JD.bool)
+                |> JD.map DbInt
+
+        "varchar" ->
+            JD.map3 VarChar_
+                (JD.field "fieldName" JD.string)
+                (JD.field "fieldLengthMaybe" <| JD.maybe JD.int)
+                (JD.field "isNotNull" JD.bool)
+                |> JD.map VarChar
+
+        "boolean" ->
+            JD.map2 Boolean_
+                (JD.field "fieldName" JD.string)
+                (JD.field "isNotNull" JD.bool)
+                |> JD.map Boolean
+
+        "datetime" ->
+            JD.map2 Datetime_
+                (JD.field "fieldName" JD.string)
+                (JD.field "isNotNull" JD.bool)
+                |> JD.map Datetime
+
+        "enum" ->
+            JD.map3 Enum_
+                (JD.field "fieldName" JD.string)
+                (JD.field "values" <| JD.list JD.string)
+                (JD.field "isNotNull" JD.bool)
+                |> JD.map Enum
+
+        _ ->
+            JD.fail "Invalid DbField"
 
 
 
@@ -31,28 +169,44 @@ type alias Model =
     { tableName : String, dbFields : Array DbField, newEnumValue : String }
 
 
-init : () -> ( Model, Cmd Msg )
-init _ =
-    ( { tableName = ""
-      , dbFields =
-            Array.fromList
-                [ PrimaryKey "id"
-                , BigInt
-                    { fieldName = "bigint"
-                    , fieldLengthMaybe = Just 20
-                    , isUnsigned = True
-                    , isNotNull = True
-                    }
-                , VarChar
-                    { fieldName = "text"
-                    , fieldLengthMaybe = Just 10
-                    , isNotNull = True
-                    }
-                ]
-      , newEnumValue = ""
-      }
-    , Cmd.none
-    )
+type alias DbFieldsRecord =
+    { dbFields : Array DbField
+    }
+
+
+init : JD.Value -> ( Model, Cmd Msg )
+init dbFieldsJsonValue =
+    case JD.decodeValue dbFieldsDecoder dbFieldsJsonValue of
+        Ok initDbFields ->
+            ( { tableName = ""
+              , dbFields =
+                    initDbFields
+              , newEnumValue = ""
+              }
+            , Cmd.none
+            )
+
+        Err err ->
+            ( { tableName = ""
+              , dbFields =
+                    Array.fromList
+                        [ PrimaryKey "id"
+                        , BigInt
+                            { fieldName = "bigint"
+                            , fieldLengthMaybe = Just 20
+                            , isUnsigned = True
+                            , isNotNull = True
+                            }
+                        , VarChar
+                            { fieldName = "text"
+                            , fieldLengthMaybe = Just 10
+                            , isNotNull = True
+                            }
+                        ]
+              , newEnumValue = ""
+              }
+            , clearDbFields ()
+            )
 
 
 initBigint : DbField
@@ -997,185 +1151,255 @@ update msg model =
     let
         { tableName, dbFields, newEnumValue } =
             model
+
+        saveDbFieldsCmd newDbFields =
+            saveDbFields <| dbFieldsEncoder newDbFields
     in
     case msg of
         UpdateTableName tname ->
             ( { model | tableName = tname }, Cmd.none )
 
         UpdatePrimaryKeyFieldName idx fieldName ->
-            ( { model
-                | dbFields =
+            let
+                newDbFields =
                     Array.update idx (updatePrimaryKeyFieldName fieldName) dbFields
+            in
+            ( { model
+                | dbFields = newDbFields
               }
-            , Cmd.none
+            , saveDbFieldsCmd newDbFields
             )
 
         UpdateBigIntFieldName idx fieldName ->
-            ( { model
-                | dbFields =
+            let
+                newDbFields =
                     Array.update idx (updateBigIntFieldName fieldName) dbFields
+            in
+            ( { model
+                | dbFields = newDbFields
               }
-            , Cmd.none
+            , saveDbFieldsCmd newDbFields
             )
 
         UpdateDbIntFieldName idx fieldName ->
-            ( { model
-                | dbFields =
+            let
+                newDbFields =
                     Array.update idx (updateDbIntFieldName fieldName) dbFields
+            in
+            ( { model
+                | dbFields = newDbFields
               }
-            , Cmd.none
+            , saveDbFieldsCmd newDbFields
             )
 
         UpdateVarcharFieldName idx fieldName ->
-            ( { model
-                | dbFields =
+            let
+                newDbFields =
                     Array.update idx (updateVarcharFieldName fieldName) dbFields
+            in
+            ( { model
+                | dbFields = newDbFields
               }
-            , Cmd.none
+            , saveDbFieldsCmd newDbFields
             )
 
         UpdateBooleanFieldName idx fieldName ->
-            ( { model
-                | dbFields =
+            let
+                newDbFields =
                     Array.update idx (updateBooleanFieldName fieldName) dbFields
+            in
+            ( { model
+                | dbFields = newDbFields
               }
-            , Cmd.none
+            , saveDbFieldsCmd newDbFields
             )
 
         UpdateDatetimeFieldName idx fieldName ->
-            ( { model
-                | dbFields =
+            let
+                newDbFields =
                     Array.update idx (updateDatetimeFieldName fieldName) dbFields
+            in
+            ( { model
+                | dbFields = newDbFields
               }
-            , Cmd.none
+            , saveDbFieldsCmd newDbFields
             )
 
         UpdateEnumFieldName idx fieldName ->
-            ( { model
-                | dbFields =
+            let
+                newDbFields =
                     Array.update idx (updateEnumFieldName fieldName) dbFields
+            in
+            ( { model
+                | dbFields = newDbFields
               }
-            , Cmd.none
+            , saveDbFieldsCmd newDbFields
             )
 
         UpdateBigIntTurnUnsigned idx ->
-            ( { model
-                | dbFields =
+            let
+                newDbFields =
                     Array.update idx updateBigIntTurnUnsigned dbFields
+            in
+            ( { model
+                | dbFields = newDbFields
               }
-            , Cmd.none
+            , saveDbFieldsCmd newDbFields
             )
 
         UpdateDbIntTurnUnsigned idx ->
-            ( { model
-                | dbFields =
+            let
+                newDbFields =
                     Array.update idx updateDbIntTurnUnsigned dbFields
+            in
+            ( { model
+                | dbFields = newDbFields
               }
-            , Cmd.none
+            , saveDbFieldsCmd newDbFields
             )
 
         UpdateBigIntTurnNotNull idx ->
-            ( { model
-                | dbFields =
+            let
+                newDbFields =
                     Array.update idx updateBigIntTurnNotNull dbFields
+            in
+            ( { model
+                | dbFields = newDbFields
               }
-            , Cmd.none
+            , saveDbFieldsCmd newDbFields
             )
 
         UpdateDbIntTurnNotNull idx ->
-            ( { model
-                | dbFields =
+            let
+                newDbFields =
                     Array.update idx updateDbIntTurnNotNull dbFields
+            in
+            ( { model
+                | dbFields = newDbFields
               }
-            , Cmd.none
+            , saveDbFieldsCmd newDbFields
             )
 
         UpdateVarcharTurnNotNull idx ->
-            ( { model
-                | dbFields =
+            let
+                newDbFields =
                     Array.update idx updateVarcharTurnNotNull dbFields
+            in
+            ( { model
+                | dbFields = newDbFields
               }
-            , Cmd.none
+            , saveDbFieldsCmd newDbFields
             )
 
         UpdateBooleanTurnNotNull idx ->
-            ( { model
-                | dbFields =
+            let
+                newDbFields =
                     Array.update idx updateBooleanTurnNotNull dbFields
+            in
+            ( { model
+                | dbFields = newDbFields
               }
-            , Cmd.none
+            , saveDbFieldsCmd newDbFields
             )
 
         UpdateDatetimeTurnNotNull idx ->
-            ( { model
-                | dbFields =
+            let
+                newDbFields =
                     Array.update idx updateDatetimeTurnNotNull dbFields
+            in
+            ( { model
+                | dbFields = newDbFields
               }
-            , Cmd.none
+            , saveDbFieldsCmd newDbFields
             )
 
         UpdateEnumTurnNotNull idx ->
-            ( { model
-                | dbFields =
+            let
+                newDbFields =
                     Array.update idx updateEnumTurnNotNull dbFields
+            in
+            ( { model
+                | dbFields = newDbFields
               }
-            , Cmd.none
+            , saveDbFieldsCmd newDbFields
             )
 
         UpdateBigIntLength idx lengthText ->
-            ( { model
-                | dbFields =
+            let
+                newDbFields =
                     Array.update idx (updateBigIntLength lengthText) dbFields
+            in
+            ( { model
+                | dbFields = newDbFields
               }
-            , Cmd.none
+            , saveDbFieldsCmd newDbFields
             )
 
         UpdateVarcharLength idx lengthText ->
-            ( { model
-                | dbFields =
+            let
+                newDbFields =
                     Array.update idx (updateVarcharLength lengthText) dbFields
+            in
+            ( { model
+                | dbFields = newDbFields
               }
-            , Cmd.none
+            , saveDbFieldsCmd newDbFields
             )
 
         UpdateNewEnumValue enumValue ->
             ( { model | newEnumValue = enumValue }, Cmd.none )
 
         UpdateFieldType idx typeText ->
-            ( { model
-                | dbFields =
+            let
+                newDbFields =
                     Array.set idx (typeTextToInitDbField typeText) dbFields
+            in
+            ( { model
+                | dbFields = newDbFields
               }
-            , Cmd.none
+            , saveDbFieldsCmd newDbFields
             )
 
         UpdateEnumValues idx ->
-            ( { model
-                | dbFields =
+            let
+                newDbFields =
                     Array.update idx (updateEnumValues newEnumValue) dbFields
+            in
+            ( { model
+                | dbFields = newDbFields
                 , newEnumValue = ""
               }
-            , Cmd.none
+            , saveDbFieldsCmd newDbFields
             )
 
         DeleteEnumValue deletedEnumValue idx ->
-            ( { model
-                | dbFields =
+            let
+                newDbFields =
                     Array.update idx (deleteEnumValue deletedEnumValue) dbFields
+            in
+            ( { model
+                | dbFields = newDbFields
               }
-            , Cmd.none
+            , saveDbFieldsCmd newDbFields
             )
 
         AddDbField ->
-            ( { model
-                | dbFields =
+            let
+                newDbFields =
                     Array.push initBigint dbFields
+            in
+            ( { model
+                | dbFields = newDbFields
               }
-            , Cmd.none
+            , saveDbFieldsCmd newDbFields
             )
 
         DeleteDbField idx ->
-            ( { model | dbFields = Array.removeAt idx dbFields }, Cmd.none )
+            let
+                newDbFields =
+                    Array.removeAt idx dbFields
+            in
+            ( { model | dbFields = newDbFields }, saveDbFieldsCmd newDbFields )
 
         DownloadDDL ->
             ( model, Download.string (tableName ++ ".sql") "text/plain" <| dbFieldArrayToDDL tableName dbFields )
@@ -1485,6 +1709,16 @@ checkboxView flag msg =
                 []
             ]
         ]
+
+
+maybeIntEncoder : Maybe Int -> JE.Value
+maybeIntEncoder vMaybe =
+    case vMaybe of
+        Just v ->
+            JE.int v
+
+        Nothing ->
+            JE.null
 
 
 headUpper : String -> String

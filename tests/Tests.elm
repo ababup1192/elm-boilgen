@@ -7,8 +7,39 @@ module Tests exposing
 import Array exposing (Array)
 import Expect exposing (Expectation)
 import Fuzz exposing (Fuzzer, int, list, string)
+import Json.Decode as JD
 import Main exposing (..)
 import Test exposing (..)
+
+
+dbFieldsDecoderTest : Test
+dbFieldsDecoderTest =
+    describe "" <|
+        [ test "" <|
+            \_ ->
+                let
+                    array =
+                        Array.fromList
+                            [ PrimaryKey "id"
+                            , BigInt
+                                { fieldName = "bigint"
+                                , fieldLengthMaybe = Just 20
+                                , isUnsigned = True
+                                , isNotNull = True
+                                }
+                            , VarChar
+                                { fieldName = "text"
+                                , fieldLengthMaybe = Just 10
+                                , isNotNull = True
+                                }
+                            ]
+                in
+                """
+          [{"type_":"primary","fieldName":"id"},{"type_":"bigint","fieldName":"bigint","fieldLengthMaybe":20,"isUnsigned":true,"isNotNull":true},{"type_":"varchar","fieldName":"text","fieldLengthMaybe":10,"isNotNull":true}]
+          """
+                    |> JD.decodeString dbFieldsDecoder
+                    |> Expect.equal (Ok array)
+        ]
 
 
 dbFieldArrayToDDLTest : Test
