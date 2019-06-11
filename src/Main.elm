@@ -862,6 +862,21 @@ object {0} {
         |> String.join "\n\n"
 
 
+dbFieldListToModelClass : String -> List DbField -> String
+dbFieldListToModelClass tableName dbFieldList =
+    let
+        scalaArgsListText =
+            dbFieldList
+                |> List.map
+                    (dbFieldToScalaArgs >> (++) "\t")
+                |> String.join ",\n"
+    in
+    interpolate """case class {0}(
+{1},
+\tversionNo: Long
+)""" [ upperCamelize tableName, scalaArgsListText ]
+
+
 dbFieldArrayToScalaCode : String -> Array DbField -> String
 dbFieldArrayToScalaCode tableName dbFieldArray =
     let
@@ -873,6 +888,8 @@ dbFieldArrayToScalaCode tableName dbFieldArray =
         ++ dbFieldListToCirceJsonMethod tableName dbFieldList
         ++ "\n\n"
         ++ dbFieldListToEnums dbFieldList
+        ++ "\n\n"
+        ++ dbFieldListToModelClass tableName dbFieldList
 
 
 

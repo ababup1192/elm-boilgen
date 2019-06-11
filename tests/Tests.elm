@@ -281,5 +281,16 @@ object BarStatus {
 \tcase object RIGHT extends BarStatus("RIGHT", /* TODO */ "")
 
 }
+
+case class Tables(
+\tid: Long,
+\tfoo: Long,
+\tho: Int,
+\ttext: Option[String],
+\thogeFlag: Boolean,
+\tstartAt: ZonedDateTime,
+\tbarStatus: BarStatus,
+\tversionNo: Long
+)
 """)
         ]
