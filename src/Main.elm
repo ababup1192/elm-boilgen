@@ -209,34 +209,34 @@ init dbFieldsJsonValue =
             )
 
 
-initBigint : DbField
-initBigint =
-    BigInt { fieldName = "", fieldLengthMaybe = Just 10, isUnsigned = False, isNotNull = True }
+initBigint : String -> DbField
+initBigint fieldName =
+    BigInt { fieldName = fieldName, fieldLengthMaybe = Just 10, isUnsigned = False, isNotNull = True }
 
 
-initDbInt : DbField
-initDbInt =
-    DbInt { fieldName = "", isUnsigned = False, isNotNull = True }
+initDbInt : String -> DbField
+initDbInt fieldName =
+    DbInt { fieldName = fieldName, isUnsigned = False, isNotNull = True }
 
 
-initVarchar : DbField
-initVarchar =
-    VarChar { fieldName = "", fieldLengthMaybe = Just 50, isNotNull = True }
+initVarchar : String -> DbField
+initVarchar fieldName =
+    VarChar { fieldName = fieldName, fieldLengthMaybe = Just 50, isNotNull = True }
 
 
-initBoolean : DbField
-initBoolean =
-    Boolean { fieldName = "", isNotNull = True }
+initBoolean : String -> DbField
+initBoolean fieldName =
+    Boolean { fieldName = fieldName, isNotNull = True }
 
 
-initDatetime : DbField
-initDatetime =
-    Datetime { fieldName = "", isNotNull = True }
+initDatetime : String -> DbField
+initDatetime fieldName =
+    Datetime { fieldName = fieldName, isNotNull = True }
 
 
-initEnum : DbField
-initEnum =
-    Enum { fieldName = "", values = [], isNotNull = True }
+initEnum : String -> DbField
+initEnum fieldName =
+    Enum { fieldName = fieldName, values = [], isNotNull = True }
 
 
 type alias BigInt_ =
@@ -1084,29 +1084,29 @@ deleteEnumValue deletedEnumValue dbField =
             dbField
 
 
-typeTextToInitDbField : String -> DbField
-typeTextToInitDbField typeText =
+typeTextToInitDbField : String -> String -> DbField
+typeTextToInitDbField typeText fieldName =
     case typeText of
         "primary" ->
             PrimaryKey ""
 
         "bigint" ->
-            initBigint
+            initBigint fieldName
 
         "int" ->
-            initDbInt
+            initDbInt fieldName
 
         "varchar" ->
-            initVarchar
+            initVarchar fieldName
 
         "boolean" ->
-            initBoolean
+            initBoolean fieldName
 
         "datetime" ->
-            initDatetime
+            initDatetime fieldName
 
         "enum" ->
-            initEnum
+            initEnum fieldName
 
         _ ->
             PrimaryKey "Implementation Error"
@@ -1351,8 +1351,11 @@ update msg model =
 
         UpdateFieldType idx typeText ->
             let
+                currentFields =
+                    Maybe.withDefault (initBigint "") (Array.get idx dbFields)
+
                 newDbFields =
-                    Array.set idx (typeTextToInitDbField typeText) dbFields
+                    Array.set idx (typeTextToInitDbField typeText <| dbFieldToFieldName currentFields) dbFields
             in
             ( { model
                 | dbFields = newDbFields
@@ -1386,7 +1389,7 @@ update msg model =
         AddDbField ->
             let
                 newDbFields =
-                    Array.push initBigint dbFields
+                    Array.push (initBigint "") dbFields
             in
             ( { model
                 | dbFields = newDbFields
