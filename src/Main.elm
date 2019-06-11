@@ -5,6 +5,7 @@ port module Main exposing
     , dbFieldArrayToCucumber
     , dbFieldArrayToDDL
     , dbFieldArrayToScalaCode
+    , dbFieldPrimaryKeyParser
     , dbFieldsDecoder
     , init
     , main
@@ -21,6 +22,8 @@ import Html.Attributes exposing (..)
 import Html.Events exposing (..)
 import Json.Decode as JD
 import Json.Encode as JE
+import Parser as P exposing ((|.), (|=))
+import Set
 import String.Interpolate exposing (interpolate)
 import Task as Task
 
@@ -237,6 +240,25 @@ initDatetime fieldName =
 initEnum : String -> DbField
 initEnum fieldName =
     Enum { fieldName = fieldName, values = [], isNotNull = True }
+
+
+dbFieldPrimaryKeyParser : P.Parser DbField
+dbFieldPrimaryKeyParser =
+    P.succeed PrimaryKey
+        |. P.symbol "`"
+        |= fieldNameParser
+        |. P.symbol "`"
+        |. P.spaces
+        |. P.symbol "bigint(20) unsigned NOT NULL AUTO_INCREMENT"
+
+
+fieldNameParser : P.Parser String
+fieldNameParser =
+    P.variable
+        { start = Char.isLower
+        , inner = \c -> Char.isAlphaNum c || c == '_'
+        , reserved = Set.fromList [ "select", "from", "where" ]
+        }
 
 
 type alias BigInt_ =

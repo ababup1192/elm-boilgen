@@ -2,6 +2,7 @@ module Tests exposing
     ( dbFieldArrayToCucumberTest
     , dbFieldArrayToDDLTest
     , dbFieldArrayToScalaCodeTest
+    , dbFieldPrimaryKeyParserTest
     )
 
 import Array exposing (Array)
@@ -9,6 +10,7 @@ import Expect exposing (Expectation)
 import Fuzz exposing (Fuzzer, int, list, string)
 import Json.Decode as JD
 import Main exposing (..)
+import Parser as P
 import Test exposing (..)
 
 
@@ -282,4 +284,15 @@ object BarStatus {
 
 }
 """)
+        ]
+
+
+dbFieldPrimaryKeyParserTest : Test
+dbFieldPrimaryKeyParserTest =
+    describe "dbFieldPrimaryKeyParserTest"
+        [ test "BigIntのDDLがParseできる" <|
+            \_ ->
+                "`id` bigint(20) unsigned NOT NULL AUTO_INCREMENT"
+                    |> P.run dbFieldPrimaryKeyParser
+                    |> Expect.equal (Ok <| PrimaryKey "id")
         ]
