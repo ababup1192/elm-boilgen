@@ -1611,8 +1611,7 @@ update msg model =
                     ( { model | dbFields = newDbFields }, Cmd.none )
 
                 Err err ->
-                    Debug.log (Debug.toString err) <|
-                        ( model, Cmd.none )
+                    ( model, Cmd.none )
 
 
 
