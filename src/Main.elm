@@ -416,7 +416,7 @@ enumValueParser =
         |. P.symbol "'"
         |= P.variable
             { start = Char.isUpper
-            , inner = \c -> Char.isAlphaNum c || Char.isUpper c
+            , inner = \c -> Char.isAlphaNum c || Char.isUpper c || c == '_'
             , reserved = Set.fromList [ "select", "from", "where" ]
             }
         |. P.symbol "'"
@@ -1610,8 +1610,9 @@ update msg model =
                 Ok newDbFields ->
                     ( { model | dbFields = newDbFields }, Cmd.none )
 
-                Err _ ->
-                    ( model, Cmd.none )
+                Err err ->
+                    Debug.log (Debug.toString err) <|
+                        ( model, Cmd.none )
 
 
 

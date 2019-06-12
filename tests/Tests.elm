@@ -300,7 +300,7 @@ dbFieldsParserTest =
 `aaa` varchar(10) NOT NULL,
 `bool` boolean NOT NULL,
 `dt` datetime(6) NOT NULL,
-`enm` enum('DEFAULT', 'FIRST', 'SECOND') NOT NULL
+`enm` enum('DEFAULT_VALUE', 'FIRST', 'SECOND') NOT NULL
                 """
                     |> P.run dbFieldsParser
                     |> Expect.equal
@@ -339,7 +339,7 @@ dbFieldsParserTest =
                                     }
                                 , Enum
                                     { fieldName = "enm"
-                                    , values = [ "DEFAULT", "FIRST", "SECOND" ]
+                                    , values = [ "DEFAULT_VALUE", "FIRST", "SECOND" ]
                                     , isNotNull = True
                                     }
                                 ]
