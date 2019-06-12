@@ -2,7 +2,7 @@ module Tests exposing
     ( dbFieldArrayToCucumberTest
     , dbFieldArrayToDDLTest
     , dbFieldArrayToScalaCodeTest
-    , dbFieldPrimaryKeyParserTest
+    , dbFieldParserParserTest
     )
 
 import Array exposing (Array)
@@ -287,12 +287,48 @@ object BarStatus {
         ]
 
 
-dbFieldPrimaryKeyParserTest : Test
-dbFieldPrimaryKeyParserTest =
-    describe "dbFieldPrimaryKeyParserTest"
-        [ test "BigIntのDDLがParseできる" <|
+dbFieldParserParserTest : Test
+dbFieldParserParserTest =
+    describe "dbFieldParserParserTest"
+        [ test "PrimaryKeyのDDLがParseできる" <|
             \_ ->
                 "`id` bigint(20) unsigned NOT NULL AUTO_INCREMENT"
-                    |> P.run dbFieldPrimaryKeyParser
+                    |> P.run dbFieldParser
                     |> Expect.equal (Ok <| PrimaryKey "id")
+        , test "BigIntのDDLがParseできる" <|
+            \_ ->
+                "`hoge_id` bigint(20) NOT NULL"
+                    |> P.run dbFieldParser
+                    |> Expect.equal
+                        (Ok <|
+                            BigInt
+                                { fieldName = "hoge_id"
+                                , fieldLengthMaybe = Just 20
+                                , isUnsigned = False
+                                , isNotNull = True
+                                }
+                        )
+        , test "VarCharのDDLがParseできる" <|
+            \_ ->
+                "`aaa` varchar(10) NOT NULL"
+                    |> P.run dbFieldParser
+                    |> Expect.equal
+                        (Ok <|
+                            VarChar
+                                { fieldName = "aaa"
+                                , fieldLengthMaybe = Just 10
+                                , isNotNull = True
+                                }
+                        )
+        , test "BooleanのDDLがParseできる" <|
+            \_ ->
+                "`bool` boolean"
+                    |> P.run dbFieldParser
+                    |> Expect.equal
+                        (Ok <|
+                            Boolean
+                                { fieldName = "bool"
+                                , isNotNull = False
+                                }
+                        )
         ]

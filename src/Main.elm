@@ -5,7 +5,7 @@ port module Main exposing
     , dbFieldArrayToCucumber
     , dbFieldArrayToDDL
     , dbFieldArrayToScalaCode
-    , dbFieldPrimaryKeyParser
+    , dbFieldParser
     , dbFieldsDecoder
     , init
     , main
@@ -242,6 +242,16 @@ initEnum fieldName =
     Enum { fieldName = fieldName, values = [], isNotNull = True }
 
 
+dbFieldParser : P.Parser DbField
+dbFieldParser =
+    P.oneOf
+        [ P.backtrackable dbFieldPrimaryKeyParser
+        , P.backtrackable dbFielBigIntParser
+        , P.backtrackable dbFieldVarCharParser
+        , P.backtrackable dbFieldBooleanParser
+        ]
+
+
 dbFieldPrimaryKeyParser : P.Parser DbField
 dbFieldPrimaryKeyParser =
     P.succeed PrimaryKey
@@ -250,6 +260,76 @@ dbFieldPrimaryKeyParser =
         |. P.symbol "`"
         |. P.spaces
         |. P.symbol "bigint(20) unsigned NOT NULL AUTO_INCREMENT"
+
+
+dbFielBigIntParser : P.Parser DbField
+dbFielBigIntParser =
+    P.map BigInt <|
+        P.succeed BigInt_
+            |. P.symbol "`"
+            |= fieldNameParser
+            |. P.symbol "`"
+            |. P.spaces
+            |. P.symbol "bigint"
+            |= lengthParser
+            |. P.spaces
+            |= isUnsignedParser
+            |. P.spaces
+            |= isNotNullParser
+
+
+dbFieldVarCharParser : P.Parser DbField
+dbFieldVarCharParser =
+    P.map VarChar <|
+        P.succeed VarChar_
+            |. P.symbol "`"
+            |= fieldNameParser
+            |. P.symbol "`"
+            |. P.spaces
+            |. P.symbol "varchar"
+            |= lengthParser
+            |. P.spaces
+            |= isNotNullParser
+
+
+dbFieldBooleanParser : P.Parser DbField
+dbFieldBooleanParser =
+    P.map Boolean <|
+        P.succeed Boolean_
+            |. P.symbol "`"
+            |= fieldNameParser
+            |. P.symbol "`"
+            |. P.spaces
+            |. P.symbol "boolean"
+            |. P.spaces
+            |= isNotNullParser
+
+
+lengthParser : P.Parser (Maybe Int)
+lengthParser =
+    P.oneOf
+        [ P.succeed Just
+            |. P.symbol "("
+            |= P.int
+            |. P.symbol ")"
+        , P.succeed Nothing
+        ]
+
+
+isUnsignedParser : P.Parser Bool
+isUnsignedParser =
+    P.oneOf
+        [ P.map (\_ -> True) (P.keyword "unsigned")
+        , P.succeed False
+        ]
+
+
+isNotNullParser : P.Parser Bool
+isNotNullParser =
+    P.oneOf
+        [ P.map (\_ -> True) (P.keyword "NOT NULL")
+        , P.succeed False
+        ]
 
 
 fieldNameParser : P.Parser String
