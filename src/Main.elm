@@ -5,8 +5,8 @@ port module Main exposing
     , dbFieldArrayToCucumber
     , dbFieldArrayToDDL
     , dbFieldArrayToScalaCode
-    , dbFieldParser
     , dbFieldsDecoder
+    , dbFieldsParser
     , init
     , main
     , update
@@ -169,7 +169,7 @@ dbFieldDecoderHelper typeText =
 
 
 type alias Model =
-    { tableName : String, dbFields : Array DbField, newEnumValue : String }
+    { tableName : String, dbFields : Array DbField, newEnumValue : String, importedStatement : String }
 
 
 type alias DbFieldsRecord =
@@ -185,6 +185,7 @@ init dbFieldsJsonValue =
               , dbFields =
                     initDbFields
               , newEnumValue = ""
+              , importedStatement = ""
               }
             , Cmd.none
             )
@@ -207,6 +208,7 @@ init dbFieldsJsonValue =
                             }
                         ]
               , newEnumValue = ""
+              , importedStatement = ""
               }
             , clearDbFields ()
             )
@@ -242,13 +244,31 @@ initEnum fieldName =
     Enum { fieldName = fieldName, values = [], isNotNull = True }
 
 
+dbFieldsParser : P.Parser (Array DbField)
+dbFieldsParser =
+    P.succeed Array.fromList
+        |. P.spaces
+        |= P.sequence
+            { start = ""
+            , separator = ","
+            , end = ""
+            , spaces = P.spaces
+            , item = dbFieldParser
+            , trailing = P.Forbidden
+            }
+        |. P.spaces
+
+
 dbFieldParser : P.Parser DbField
 dbFieldParser =
     P.oneOf
         [ P.backtrackable dbFieldPrimaryKeyParser
         , P.backtrackable dbFielBigIntParser
+        , P.backtrackable dbFieldIntParser
         , P.backtrackable dbFieldVarCharParser
         , P.backtrackable dbFieldBooleanParser
+        , P.backtrackable dbFieldDatetimeParser
+        , P.backtrackable dbFieldEnumParser
         ]
 
 
@@ -278,6 +298,21 @@ dbFielBigIntParser =
             |= isNotNullParser
 
 
+dbFieldIntParser : P.Parser DbField
+dbFieldIntParser =
+    P.map DbInt <|
+        P.succeed DbInt_
+            |. P.symbol "`"
+            |= fieldNameParser
+            |. P.symbol "`"
+            |. P.spaces
+            |. P.symbol "int"
+            |. P.spaces
+            |= isUnsignedParser
+            |. P.spaces
+            |= isNotNullParser
+
+
 dbFieldVarCharParser : P.Parser DbField
 dbFieldVarCharParser =
     P.map VarChar <|
@@ -301,6 +336,40 @@ dbFieldBooleanParser =
             |. P.symbol "`"
             |. P.spaces
             |. P.symbol "boolean"
+            |. P.spaces
+            |= isNotNullParser
+
+
+dbFieldDatetimeParser : P.Parser DbField
+dbFieldDatetimeParser =
+    P.map Datetime <|
+        P.succeed Datetime_
+            |. P.symbol "`"
+            |= fieldNameParser
+            |. P.symbol "`"
+            |. P.spaces
+            |. P.symbol "datetime(6)"
+            |. P.spaces
+            |= isNotNullParser
+
+
+dbFieldEnumParser : P.Parser DbField
+dbFieldEnumParser =
+    P.map Enum <|
+        P.succeed Enum_
+            |. P.symbol "`"
+            |= fieldNameParser
+            |. P.symbol "`"
+            |. P.spaces
+            |. P.symbol "enum"
+            |= P.sequence
+                { start = "("
+                , separator = ","
+                , end = ")"
+                , spaces = P.spaces
+                , item = enumValueParser
+                , trailing = P.Forbidden
+                }
             |. P.spaces
             |= isNotNullParser
 
@@ -339,6 +408,18 @@ fieldNameParser =
         , inner = \c -> Char.isAlphaNum c || c == '_'
         , reserved = Set.fromList [ "select", "from", "where" ]
         }
+
+
+enumValueParser : P.Parser String
+enumValueParser =
+    P.succeed identity
+        |. P.symbol "'"
+        |= P.variable
+            { start = Char.isUpper
+            , inner = \c -> Char.isAlphaNum c || Char.isUpper c
+            , reserved = Set.fromList [ "select", "from", "where" ]
+            }
+        |. P.symbol "'"
 
 
 type alias BigInt_ =
@@ -1246,12 +1327,14 @@ type Msg
     | DownloadDDL
     | DownloadCucumber
     | DownloadScala
+    | UpdateImportedStatement String
+    | ImportDDL
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     let
-        { tableName, dbFields, newEnumValue } =
+        { tableName, dbFields, newEnumValue, importedStatement } =
             model
 
         saveDbFieldsCmd newDbFields =
@@ -1515,6 +1598,21 @@ update msg model =
         DownloadScala ->
             ( model, Download.string (upperCamelize tableName ++ ".scala") "text/plain" <| dbFieldArrayToScalaCode tableName dbFields )
 
+        UpdateImportedStatement statement ->
+            ( { model | importedStatement = statement }, Cmd.none )
+
+        ImportDDL ->
+            let
+                newDbFieldsResult =
+                    P.run dbFieldsParser importedStatement
+            in
+            case newDbFieldsResult of
+                Ok newDbFields ->
+                    ( { model | dbFields = newDbFields }, Cmd.none )
+
+                Err _ ->
+                    ( model, Cmd.none )
+
 
 
 ---- VIEW ----
@@ -1735,7 +1833,7 @@ dbFieldToView idx newEnumValue dbField =
 view : Model -> Browser.Document Msg
 view model =
     let
-        { dbFields, newEnumValue } =
+        { dbFields, newEnumValue, importedStatement } =
             model
 
         dbFieldList =
@@ -1744,9 +1842,13 @@ view model =
     { title = "elm boilgen"
     , body =
         [ div [ class "downloads" ]
-            [ button [ class "button is-primary", onClick DownloadDDL ] [ text "DDL" ]
-            , button [ class "button is-primary", onClick DownloadCucumber ] [ text "Cucumber" ]
-            , button [ class "button is-primary", onClick DownloadScala ] [ text "Scala" ]
+            [ button [ class "button", onClick DownloadDDL ] [ text "DDL" ]
+            , button [ class "button", onClick DownloadCucumber ] [ text "Cucumber" ]
+            , button [ class "button", onClick DownloadScala ] [ text "Scala" ]
+            ]
+        , div [ class "import-ddl" ]
+            [ button [ class "button", onClick ImportDDL ] [ text "DDL Import" ]
+            , textarea [ class "import-statement", placeholder "`id` bigint(20) unsigned NOT NULL AUTO_INCREMENT,\n`hoge_id` bigint(20) unsigned NOT NULL,\n...", onInput UpdateImportedStatement ] [ text importedStatement ]
             ]
         , div [ class "field" ]
             [ div [ class "control" ]

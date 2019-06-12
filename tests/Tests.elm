@@ -2,7 +2,7 @@ module Tests exposing
     ( dbFieldArrayToCucumberTest
     , dbFieldArrayToDDLTest
     , dbFieldArrayToScalaCodeTest
-    , dbFieldParserParserTest
+    , dbFieldsParserTest
     )
 
 import Array exposing (Array)
@@ -287,48 +287,61 @@ object BarStatus {
         ]
 
 
-dbFieldParserParserTest : Test
-dbFieldParserParserTest =
-    describe "dbFieldParserParserTest"
-        [ test "PrimaryKeyのDDLがParseできる" <|
+dbFieldsParserTest : Test
+dbFieldsParserTest =
+    describe "dbFieldsParserTest"
+        [ test "DDL(フィールド部分のみ)がParseできる" <|
             \_ ->
-                "`id` bigint(20) unsigned NOT NULL AUTO_INCREMENT"
-                    |> P.run dbFieldParser
-                    |> Expect.equal (Ok <| PrimaryKey "id")
-        , test "BigIntのDDLがParseできる" <|
-            \_ ->
-                "`hoge_id` bigint(20) NOT NULL"
-                    |> P.run dbFieldParser
+                String.trim """
+`id` bigint(20) unsigned NOT NULL AUTO_INCREMENT,
+`hoge_id` bigint(20) unsigned NOT NULL,
+`foo` bigint(5) NOT NULL,
+`ho` int unsigned NOT NULL,
+`aaa` varchar(10) NOT NULL,
+`bool` boolean NOT NULL,
+`dt` datetime(6) NOT NULL,
+`enm` enum('DEFAULT', 'FIRST', 'SECOND') NOT NULL
+                """
+                    |> P.run dbFieldsParser
                     |> Expect.equal
                         (Ok <|
-                            BigInt
-                                { fieldName = "hoge_id"
-                                , fieldLengthMaybe = Just 20
-                                , isUnsigned = False
-                                , isNotNull = True
-                                }
-                        )
-        , test "VarCharのDDLがParseできる" <|
-            \_ ->
-                "`aaa` varchar(10) NOT NULL"
-                    |> P.run dbFieldParser
-                    |> Expect.equal
-                        (Ok <|
-                            VarChar
-                                { fieldName = "aaa"
-                                , fieldLengthMaybe = Just 10
-                                , isNotNull = True
-                                }
-                        )
-        , test "BooleanのDDLがParseできる" <|
-            \_ ->
-                "`bool` boolean"
-                    |> P.run dbFieldParser
-                    |> Expect.equal
-                        (Ok <|
-                            Boolean
-                                { fieldName = "bool"
-                                , isNotNull = False
-                                }
+                            Array.fromList
+                                [ PrimaryKey "id"
+                                , BigInt
+                                    { fieldName = "hoge_id"
+                                    , fieldLengthMaybe = Just 20
+                                    , isUnsigned = True
+                                    , isNotNull = True
+                                    }
+                                , BigInt
+                                    { fieldName = "foo"
+                                    , fieldLengthMaybe = Just 5
+                                    , isUnsigned = False
+                                    , isNotNull = True
+                                    }
+                                , DbInt
+                                    { fieldName = "ho"
+                                    , isUnsigned = True
+                                    , isNotNull = True
+                                    }
+                                , VarChar
+                                    { fieldName = "aaa"
+                                    , fieldLengthMaybe = Just 10
+                                    , isNotNull = True
+                                    }
+                                , Boolean
+                                    { fieldName = "bool"
+                                    , isNotNull = True
+                                    }
+                                , Datetime
+                                    { fieldName = "dt"
+                                    , isNotNull = True
+                                    }
+                                , Enum
+                                    { fieldName = "enm"
+                                    , values = [ "DEFAULT", "FIRST", "SECOND" ]
+                                    , isNotNull = True
+                                    }
+                                ]
                         )
         ]

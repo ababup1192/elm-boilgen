@@ -13,6 +13,23 @@ body {
   width: 300px;
 }
 
+.import-ddl {
+  display: flex;
+  flex-direction: column;
+  margin-bottom: 10px;
+
+  .button {
+    width: 100px;
+  }
+  .import-statement {
+    overflow: scroll;
+    width: 800px;
+    height: 200px;
+    font-size: 14px;
+    margin-top: 10px;
+  }
+}
+
 .cp-layout-table {
   display: grid;
   grid-template-columns: 220px 2fr 100px 70px 70px 70px;
