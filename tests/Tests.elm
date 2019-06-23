@@ -197,7 +197,7 @@ dbFieldArrayToScalaCodeTest =
                         Array.fromList
                             [ PrimaryKey "id"
                             , BigInt
-                                { fieldName = "foo"
+                                { fieldName = "foo_id"
                                 , fieldLengthMaybe = Just 10
                                 , isUnsigned = False
                                 , isNotNull = True
@@ -231,7 +231,7 @@ dbFieldArrayToScalaCodeTest =
                     |> Expect.equal (String.trim """
 object DummyTables {
 \tdef createTables(
-\t\tfoo: Long,
+\t\tfooId: Long,
 \t\tho: Int,
 \t\ttext: Option[String],
 \t\thogeFlag: Boolean,
@@ -240,7 +240,7 @@ object DummyTables {
 \t\tversionNo: Long = 1L
 \t): Tables =
 \t\tTables.create(
-\t\t\tfoo = foo,
+\t\t\tfooId = fooId,
 \t\t\tho = ho,
 \t\t\ttext = text,
 \t\t\thogeFlag = hogeFlag,
@@ -259,7 +259,7 @@ def createTablesJson(
 ): Json =
 \tJson.obj(
 \t\t"id" -> tables.id.toString.asJson,
-\t\t"foo" -> tables.foo.asJson,
+\t\t"fooId" -> tables.fooId.asJson,
 \t\t"ho" -> tables.ho.asJson,
 \t\t"text" -> tables.text.asJson,
 \t\t"hogeFlag" -> tables.hogeFlag.asJson,
@@ -284,7 +284,7 @@ object BarStatus {
 
 case class Tables(
 \tid: Long,
-\tfoo: Long,
+\tfoo: Foo,
 \tho: Int,
 \ttext: Option[String],
 \thogeFlag: Boolean,

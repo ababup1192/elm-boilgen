@@ -459,6 +459,46 @@ dbFieldToScalaArgs dbField =
             createArgs fieldName isNotNull <| upperCamelize fieldName
 
 
+dbFieldToScalaCaseClass : DbField -> String
+dbFieldToScalaCaseClass dbField =
+    let
+        decorateOption isNotNull scalaTypes =
+            if isNotNull then
+                scalaTypes
+
+            else
+                "Option[" ++ scalaTypes ++ "]"
+
+        createArgs fieldName isNotNull scalaTypes =
+            lowerCamelize fieldName ++ ": " ++ decorateOption isNotNull scalaTypes
+    in
+    case dbField of
+        PrimaryKey fieldName ->
+            lowerCamelize fieldName ++ ": Long"
+
+        BigInt { fieldName, isNotNull } ->
+            if String.endsWith "_id" fieldName then
+                createArgs (fieldName |> String.replace "_id" "") isNotNull (fieldName |> String.replace "_id" "" |> upperCamelize)
+
+            else
+                createArgs fieldName isNotNull "Long"
+
+        DbInt { fieldName, isNotNull } ->
+            createArgs fieldName isNotNull "Int"
+
+        VarChar { fieldName, isNotNull } ->
+            createArgs fieldName isNotNull "String"
+
+        Boolean { fieldName, isNotNull } ->
+            createArgs fieldName isNotNull "Boolean"
+
+        Datetime { fieldName, isNotNull } ->
+            createArgs fieldName isNotNull "ZonedDateTime"
+
+        Enum { fieldName, values, isNotNull } ->
+            createArgs fieldName isNotNull <| upperCamelize fieldName
+
+
 dbFieldToScalaMapObj : DbField -> String -> String
 dbFieldToScalaMapObj dbField tableName =
     let
@@ -868,7 +908,7 @@ dbFieldListToModelClass tableName dbFieldList =
         scalaArgsListText =
             dbFieldList
                 |> List.map
-                    (dbFieldToScalaArgs >> (++) "\t")
+                    (dbFieldToScalaCaseClass >> (++) "\t")
                 |> String.join ",\n"
     in
     interpolate """case class {0}(
