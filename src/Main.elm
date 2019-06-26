@@ -642,6 +642,46 @@ dbFieldToScalaArgs dbField =
             createArgs fieldName isNotNull <| upperCamelize fieldName
 
 
+dbFieldToScalaCaseClass : DbField -> String
+dbFieldToScalaCaseClass dbField =
+    let
+        decorateOption isNotNull scalaTypes =
+            if isNotNull then
+                scalaTypes
+
+            else
+                "Option[" ++ scalaTypes ++ "]"
+
+        createArgs fieldName isNotNull scalaTypes =
+            lowerCamelize fieldName ++ ": " ++ decorateOption isNotNull scalaTypes
+    in
+    case dbField of
+        PrimaryKey fieldName ->
+            lowerCamelize fieldName ++ ": Long"
+
+        BigInt { fieldName, isNotNull } ->
+            if String.endsWith "_id" fieldName then
+                createArgs (fieldName |> String.replace "_id" "") isNotNull (fieldName |> String.replace "_id" "" |> upperCamelize)
+
+            else
+                createArgs fieldName isNotNull "Long"
+
+        DbInt { fieldName, isNotNull } ->
+            createArgs fieldName isNotNull "Int"
+
+        VarChar { fieldName, isNotNull } ->
+            createArgs fieldName isNotNull "String"
+
+        Boolean { fieldName, isNotNull } ->
+            createArgs fieldName isNotNull "Boolean"
+
+        Datetime { fieldName, isNotNull } ->
+            createArgs fieldName isNotNull "ZonedDateTime"
+
+        Enum { fieldName, values, isNotNull } ->
+            createArgs fieldName isNotNull <| upperCamelize fieldName
+
+
 dbFieldToScalaMapObj : DbField -> String -> String
 dbFieldToScalaMapObj dbField tableName =
     let
@@ -1045,6 +1085,21 @@ object {0} {
         |> String.join "\n\n"
 
 
+dbFieldListToModelClass : String -> List DbField -> String
+dbFieldListToModelClass tableName dbFieldList =
+    let
+        scalaArgsListText =
+            dbFieldList
+                |> List.map
+                    (dbFieldToScalaCaseClass >> (++) "\t")
+                |> String.join ",\n"
+    in
+    interpolate """case class {0}(
+{1},
+\tversionNo: Long
+)""" [ upperCamelize tableName, scalaArgsListText ]
+
+
 dbFieldArrayToScalaCode : String -> Array DbField -> String
 dbFieldArrayToScalaCode tableName dbFieldArray =
     let
@@ -1056,6 +1111,8 @@ dbFieldArrayToScalaCode tableName dbFieldArray =
         ++ dbFieldListToCirceJsonMethod tableName dbFieldList
         ++ "\n\n"
         ++ dbFieldListToEnums dbFieldList
+        ++ "\n\n"
+        ++ dbFieldListToModelClass tableName dbFieldList
 
 
 
