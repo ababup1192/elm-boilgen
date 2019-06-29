@@ -8,6 +8,7 @@ port module Main exposing
     , dbFieldsDecoder
     , dbFieldsParser
     , init
+    , insertAt
     , main
     , update
     , view
@@ -1381,6 +1382,7 @@ type Msg
     | DeleteEnumValue String Index
     | AddDbField
     | DeleteDbField Index
+    | InsertDbField Index
     | DownloadDDL
     | DownloadCucumber
     | DownloadScala
@@ -1639,6 +1641,13 @@ update msg model =
             , saveDbFieldsCmd newDbFields
             )
 
+        InsertDbField idx ->
+            let
+                newDbFields =
+                    insertAt idx (initBigint "") dbFields
+            in
+            ( { model | dbFields = newDbFields }, saveDbFieldsCmd newDbFields )
+
         DeleteDbField idx ->
             let
                 newDbFields =
@@ -1704,6 +1713,7 @@ dbFieldToView idx newEnumValue dbField =
             [ div []
                 [ input [ class "input", type_ "text", value fieldName, onInput <| UpdatePrimaryKeyFieldName idx ]
                     []
+                , span [ class "insert-icon", onClick <| InsertDbField idx ] [ i [ class "far fa-caret-square-up" ] [] ]
                 , span [ class "trash-icon", onClick <| DeleteDbField idx ] [ i [ class "fas fa-trash" ] [] ]
                 ]
             , div []
@@ -1749,6 +1759,7 @@ dbFieldToView idx newEnumValue dbField =
             [ div []
                 [ input [ class "input", type_ "text", value fieldName, onInput <| UpdateBigIntFieldName idx ]
                     []
+                , span [ class "insert-icon", onClick <| InsertDbField idx ] [ i [ class "far fa-caret-square-up" ] [] ]
                 , span [ class "trash-icon", onClick <| DeleteDbField idx ] [ i [ class "fas fa-trash" ] [] ]
                 ]
             , div []
@@ -1772,6 +1783,7 @@ dbFieldToView idx newEnumValue dbField =
             [ div []
                 [ input [ class "input", type_ "text", value fieldName, onInput <| UpdateDbIntFieldName idx ]
                     []
+                , span [ class "insert-icon", onClick <| InsertDbField idx ] [ i [ class "far fa-caret-square-up" ] [] ]
                 , span [ class "trash-icon", onClick <| DeleteDbField idx ] [ i [ class "fas fa-trash" ] [] ]
                 ]
             , div []
@@ -1793,6 +1805,7 @@ dbFieldToView idx newEnumValue dbField =
             [ div []
                 [ input [ class "input", type_ "text", value fieldName, onInput <| UpdateVarcharFieldName idx ]
                     []
+                , span [ class "insert-icon", onClick <| InsertDbField idx ] [ i [ class "far fa-caret-square-up" ] [] ]
                 , span [ class "trash-icon", onClick <| DeleteDbField idx ] [ i [ class "fas fa-trash" ] [] ]
                 ]
             , div []
@@ -1815,6 +1828,7 @@ dbFieldToView idx newEnumValue dbField =
             [ div []
                 [ input [ class "input", type_ "text", value fieldName, onInput <| UpdateBooleanFieldName idx ]
                     []
+                , span [ class "insert-icon", onClick <| InsertDbField idx ] [ i [ class "far fa-caret-square-up" ] [] ]
                 , span [ class "trash-icon", onClick <| DeleteDbField idx ] [ i [ class "fas fa-trash" ] [] ]
                 ]
             , div []
@@ -1835,6 +1849,7 @@ dbFieldToView idx newEnumValue dbField =
             [ div []
                 [ input [ class "input", type_ "text", value fieldName, onInput <| UpdateDatetimeFieldName idx ]
                     []
+                , span [ class "insert-icon", onClick <| InsertDbField idx ] [ i [ class "far fa-caret-square-up" ] [] ]
                 , span [ class "trash-icon", onClick <| DeleteDbField idx ] [ i [ class "fas fa-trash" ] [] ]
                 ]
             , div []
@@ -1857,6 +1872,7 @@ dbFieldToView idx newEnumValue dbField =
             [ div []
                 [ input [ class "input", type_ "text", value fieldName, onInput <| UpdateEnumFieldName idx ]
                     []
+                , span [ class "insert-icon", onClick <| InsertDbField idx ] [ i [ class "far fa-caret-square-up" ] [] ]
                 , span [ class "trash-icon", onClick <| DeleteDbField idx ] [ i [ class "fas fa-trash" ] [] ]
                 ]
             , div [ class "enum" ]
@@ -2030,3 +2046,23 @@ upperCamelize str =
                         word
             )
         |> String.concat
+
+
+insertAt : Int -> a -> Array a -> Array a
+insertAt index val values =
+    let
+        length =
+            Array.length values
+    in
+    if index >= 0 && index <= length then
+        let
+            before =
+                Array.slice 0 index values
+
+            after =
+                Array.slice index length values
+        in
+        Array.append (Array.push val before) after
+
+    else
+        values

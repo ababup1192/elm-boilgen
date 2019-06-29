@@ -3,6 +3,7 @@ module Tests exposing
     , dbFieldArrayToDDLTest
     , dbFieldArrayToScalaCodeTest
     , dbFieldsParserTest
+    , insertAtTest
     )
 
 import Array exposing (Array)
@@ -355,4 +356,14 @@ dbFieldsParserTest =
                                     }
                                 ]
                         )
+        ]
+
+
+insertAtTest : Test
+insertAtTest =
+    describe "insertAtTest"
+        [ test "DDL(フィールド部分のみ)がParseできる" <|
+            \_ ->
+                insertAt 0 'b' (Array.fromList [ 'a', 'c' ])
+                    |> Expect.equal (Array.fromList [ 'b', 'a', 'c' ])
         ]

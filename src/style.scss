@@ -113,9 +113,18 @@ body {
   }
 }
 
+.insert-icon {
+  margin-left: 10px;
+  cursor: pointer;
+}
+
 .trash-icon {
   margin-left: 10px;
   cursor: pointer;
+}
+
+.insert-icon:hover {
+  color: #25D366;
 }
 
 .trash-icon:hover {
