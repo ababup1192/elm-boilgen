@@ -1381,8 +1381,8 @@ type Msg
     | UpdateEnumValues Index
     | DeleteEnumValue String Index
     | AddDbField
-    | DeleteDbField Index
     | InsertDbField Index
+    | DeleteDbField Index
     | DownloadDDL
     | DownloadCucumber
     | DownloadScala
