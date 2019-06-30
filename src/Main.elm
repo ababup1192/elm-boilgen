@@ -6,6 +6,7 @@ port module Main exposing
     , dbFieldArrayToDDL
     , dbFieldArrayToElmCode
     , dbFieldArrayToScalaCode
+    , dbFieldArrayToTypeScriptCode
     , dbFieldsDecoder
     , dbFieldsParser
     , init
@@ -644,6 +645,50 @@ dbFieldToScalaArgs dbField =
             createArgs fieldName isNotNull <| upperCamelize fieldName
 
 
+dbFieldToTypeScriptField : DbField -> String
+dbFieldToTypeScriptField dbField =
+    let
+        decorateOrNullType isNotNull types =
+            if isNotNull then
+                types
+
+            else
+                types ++ " | null"
+
+        createArgs fieldName isNotNull types =
+            "readonly " ++ lowerCamelize fieldName ++ ": " ++ decorateOrNullType isNotNull types ++ ";"
+    in
+    case dbField of
+        PrimaryKey fieldName ->
+            createArgs fieldName True "string"
+
+        BigInt { fieldName, isNotNull } ->
+            let
+                record =
+                    String.replace "_id" "" fieldName
+            in
+            if String.endsWith "_id" fieldName then
+                createArgs record isNotNull <| upperCamelize record
+
+            else
+                createArgs fieldName isNotNull "string"
+
+        DbInt { fieldName, isNotNull } ->
+            createArgs fieldName isNotNull "number"
+
+        VarChar { fieldName, isNotNull } ->
+            createArgs fieldName isNotNull "string"
+
+        Boolean { fieldName, isNotNull } ->
+            createArgs fieldName isNotNull "boolean"
+
+        Datetime { fieldName, isNotNull } ->
+            createArgs fieldName isNotNull "Date"
+
+        Enum { fieldName, values, isNotNull } ->
+            createArgs fieldName isNotNull <| upperCamelize fieldName
+
+
 dbFieldToElmRecordField : DbField -> String
 dbFieldToElmRecordField dbField =
     let
@@ -661,8 +706,8 @@ dbFieldToElmRecordField dbField =
             else
                 "Maybe " ++ elmTypes
 
-        createArgs fieldName isNotNull scalaTypes =
-            decorateMaybeFieldName isNotNull fieldName ++ " : " ++ decorateMaybeType isNotNull scalaTypes
+        createArgs fieldName isNotNull elmTypes =
+            decorateMaybeFieldName isNotNull fieldName ++ " : " ++ decorateMaybeType isNotNull elmTypes
     in
     case dbField of
         PrimaryKey fieldName ->
@@ -1138,6 +1183,27 @@ object {0} {
         |> String.join "\n\n"
 
 
+dbFieldListToTypeScriptEnums : List DbField -> String
+dbFieldListToTypeScriptEnums dbFieldList =
+    dbFieldList
+        |> List.filter isEnum
+        |> List.map
+            (\dbField ->
+                case dbField of
+                    Enum { fieldName, values } ->
+                        let
+                            unionTypes =
+                                values |> List.map (\str -> "'" ++ String.toUpper str ++ "'") |> String.join " | "
+                        in
+                        interpolate """export type {0} = {1}"""
+                            [ upperCamelize fieldName, unionTypes ]
+
+                    _ ->
+                        ""
+            )
+        |> String.join "\n\n"
+
+
 dbFieldListToElmEnums : List DbField -> String
 dbFieldListToElmEnums dbFieldList =
     dbFieldList
@@ -1190,6 +1256,22 @@ dbFieldArrayToScalaCode tableName dbFieldArray =
         ++ dbFieldListToModelClass tableName dbFieldList
 
 
+dbFieldListToTypeAlias : String -> List DbField -> String
+dbFieldListToTypeAlias tableName dbFieldList =
+    let
+        typeScriptFieldListText =
+            dbFieldList
+                |> List.map dbFieldToTypeScriptField
+                |> String.join "\n\t"
+    in
+    interpolate """export type {0} = {
+\t{1}
+};"""
+        [ upperCamelize tableName |> String.dropRight 1
+        , typeScriptFieldListText
+        ]
+
+
 dbFieldListToRecordAlias : String -> List DbField -> String
 dbFieldListToRecordAlias tableName dbFieldList =
     let
@@ -1207,6 +1289,17 @@ dbFieldListToRecordAlias tableName dbFieldList =
         [ upperCamelize tableName |> String.dropRight 1
         , elmRecordFieldListText
         ]
+
+
+dbFieldArrayToTypeScriptCode : String -> Array DbField -> String
+dbFieldArrayToTypeScriptCode tableName dbFieldArray =
+    let
+        dbFieldList =
+            Array.toList dbFieldArray
+    in
+    dbFieldListToTypeAlias tableName dbFieldList
+        ++ "\n\n\n"
+        ++ dbFieldListToTypeScriptEnums dbFieldList
 
 
 dbFieldArrayToElmCode : String -> Array DbField -> String
@@ -1490,6 +1583,7 @@ type Msg
     | DownloadDDL
     | DownloadCucumber
     | DownloadScala
+    | DownloadTypeScript
     | DownloadElm
     | UpdateImportedStatement String
     | ImportDDL
@@ -1769,6 +1863,9 @@ update msg model =
         DownloadScala ->
             ( model, Download.string (upperCamelize tableName ++ ".scala") "text/plain" <| dbFieldArrayToScalaCode tableName dbFields )
 
+        DownloadTypeScript ->
+            ( model, Download.string (upperCamelize tableName ++ ".ts") "text/plain" <| dbFieldArrayToTypeScriptCode tableName dbFields )
+
         DownloadElm ->
             ( model, Download.string (upperCamelize tableName ++ ".elm") "text/plain" <| dbFieldArrayToElmCode tableName dbFields )
 
@@ -2026,6 +2123,7 @@ view model =
             [ button [ class "button", onClick DownloadDDL ] [ text "DDL" ]
             , button [ class "button", onClick DownloadCucumber ] [ text "Cucumber" ]
             , button [ class "button", onClick DownloadScala ] [ text "Scala" ]
+            , button [ class "button", onClick DownloadTypeScript ] [ text "TypeScript" ]
             , button [ class "button", onClick DownloadElm ] [ text "Elm" ]
             ]
         , div [ class "import-ddl" ]

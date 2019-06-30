@@ -3,6 +3,7 @@ module Tests exposing
     , dbFieldArrayToDDLTest
     , dbFieldArrayToElmCodeTest
     , dbFieldArrayToScalaCodeTest
+    , dbFieldArrayToTypeScriptCodeTest
     , dbFieldsParserTest
     , insertAtTest
     )
@@ -296,6 +297,64 @@ case class Tables(
 \tbarStatus: BarStatus,
 \tversionNo: Long
 )
+""")
+        ]
+
+
+dbFieldArrayToTypeScriptCodeTest : Test
+dbFieldArrayToTypeScriptCodeTest =
+    describe "dbFieldArrayToTypeScriptCodeTest"
+        [ test "TypeScriptのボイラプレートが生成される" <|
+            \_ ->
+                let
+                    dbFieldArray =
+                        Array.fromList
+                            [ PrimaryKey "id"
+                            , BigInt
+                                { fieldName = "foo_id"
+                                , fieldLengthMaybe = Just 10
+                                , isUnsigned = False
+                                , isNotNull = True
+                                }
+                            , DbInt
+                                { fieldName = "ho"
+                                , isUnsigned = True
+                                , isNotNull = True
+                                }
+                            , VarChar
+                                { fieldName = "text"
+                                , fieldLengthMaybe = Just 10
+                                , isNotNull = False
+                                }
+                            , Boolean
+                                { fieldName = "hoge_flag"
+                                , isNotNull = True
+                                }
+                            , Datetime
+                                { fieldName = "start_at"
+                                , isNotNull = True
+                                }
+                            , Enum
+                                { fieldName = "bar_status"
+                                , values = [ "UP", "DOWN", "LEFT", "RIGHT" ]
+                                , isNotNull = True
+                                }
+                            ]
+                in
+                dbFieldArrayToTypeScriptCode "tables" dbFieldArray
+                    |> Expect.equal (String.trim """
+export type Table = {
+\treadonly id: string;
+\treadonly foo: Foo;
+\treadonly ho: number;
+\treadonly text: string | null;
+\treadonly hogeFlag: boolean;
+\treadonly startAt: Date;
+\treadonly barStatus: BarStatus;
+};
+
+
+export type BarStatus = 'UP' | 'DOWN' | 'LEFT' | 'RIGHT'
 """)
         ]
 
