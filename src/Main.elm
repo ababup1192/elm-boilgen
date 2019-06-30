@@ -1490,6 +1490,7 @@ type Msg
     | DownloadDDL
     | DownloadCucumber
     | DownloadScala
+    | DownloadElm
     | UpdateImportedStatement String
     | ImportDDL
 
@@ -1768,6 +1769,9 @@ update msg model =
         DownloadScala ->
             ( model, Download.string (upperCamelize tableName ++ ".scala") "text/plain" <| dbFieldArrayToScalaCode tableName dbFields )
 
+        DownloadElm ->
+            ( model, Download.string (upperCamelize tableName ++ ".elm") "text/plain" <| dbFieldArrayToElmCode tableName dbFields )
+
         UpdateImportedStatement statement ->
             ( { model | importedStatement = statement }, Cmd.none )
 
@@ -2022,6 +2026,7 @@ view model =
             [ button [ class "button", onClick DownloadDDL ] [ text "DDL" ]
             , button [ class "button", onClick DownloadCucumber ] [ text "Cucumber" ]
             , button [ class "button", onClick DownloadScala ] [ text "Scala" ]
+            , button [ class "button", onClick DownloadElm ] [ text "Elm" ]
             ]
         , div [ class "import-ddl" ]
             [ button [ class "button", onClick ImportDDL ] [ text "DDL Import" ]
