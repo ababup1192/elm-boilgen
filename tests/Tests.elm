@@ -1,6 +1,7 @@
 module Tests exposing
     ( dbFieldArrayToCucumberTest
     , dbFieldArrayToDDLTest
+    , dbFieldArrayToElmCodeTest
     , dbFieldArrayToScalaCodeTest
     , dbFieldsParserTest
     , insertAtTest
@@ -295,6 +296,67 @@ case class Tables(
 \tbarStatus: BarStatus,
 \tversionNo: Long
 )
+""")
+        ]
+
+
+dbFieldArrayToElmCodeTest : Test
+dbFieldArrayToElmCodeTest =
+    describe "dbFieldArrayToElmCodeTest"
+        [ test "Elmのボイラプレートが生成される" <|
+            \_ ->
+                let
+                    dbFieldArray =
+                        Array.fromList
+                            [ PrimaryKey "id"
+                            , BigInt
+                                { fieldName = "foo_id"
+                                , fieldLengthMaybe = Just 10
+                                , isUnsigned = False
+                                , isNotNull = True
+                                }
+                            , DbInt
+                                { fieldName = "ho"
+                                , isUnsigned = True
+                                , isNotNull = True
+                                }
+                            , VarChar
+                                { fieldName = "text"
+                                , fieldLengthMaybe = Just 10
+                                , isNotNull = False
+                                }
+                            , Boolean
+                                { fieldName = "hoge_flag"
+                                , isNotNull = True
+                                }
+                            , Datetime
+                                { fieldName = "start_at"
+                                , isNotNull = True
+                                }
+                            , Enum
+                                { fieldName = "bar_status"
+                                , values = [ "UP", "DOWN", "LEFT", "RIGHT" ]
+                                , isNotNull = True
+                                }
+                            ]
+                in
+                dbFieldArrayToElmCode "tables" dbFieldArray
+                    |> Expect.equal (String.trim """
+type alias Table =
+\t{ foo : Foo
+\t, ho : Int
+\t, textMaybe : Maybe String
+\t, hogeFlag : Bool
+\t, startAt : Int
+\t, barStatus : BarStatus
+\t}
+
+
+type BarStatus
+\t= Up
+\t| Down
+\t| Left
+\t| Right
 """)
         ]
 

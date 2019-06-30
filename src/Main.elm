@@ -4,6 +4,7 @@ port module Main exposing
     , Msg(..)
     , dbFieldArrayToCucumber
     , dbFieldArrayToDDL
+    , dbFieldArrayToElmCode
     , dbFieldArrayToScalaCode
     , dbFieldsDecoder
     , dbFieldsParser
@@ -643,6 +644,57 @@ dbFieldToScalaArgs dbField =
             createArgs fieldName isNotNull <| upperCamelize fieldName
 
 
+dbFieldToElmRecordField : DbField -> String
+dbFieldToElmRecordField dbField =
+    let
+        decorateMaybeFieldName isNotNull fieldName =
+            if isNotNull then
+                lowerCamelize fieldName
+
+            else
+                lowerCamelize fieldName ++ "Maybe"
+
+        decorateMaybeType isNotNull elmTypes =
+            if isNotNull then
+                elmTypes
+
+            else
+                "Maybe " ++ elmTypes
+
+        createArgs fieldName isNotNull scalaTypes =
+            decorateMaybeFieldName isNotNull fieldName ++ " : " ++ decorateMaybeType isNotNull scalaTypes
+    in
+    case dbField of
+        PrimaryKey fieldName ->
+            ""
+
+        BigInt { fieldName, isNotNull } ->
+            let
+                record =
+                    String.replace "_id" "" fieldName
+            in
+            if String.endsWith "_id" fieldName then
+                createArgs record isNotNull <| upperCamelize record
+
+            else
+                createArgs fieldName isNotNull "String"
+
+        DbInt { fieldName, isNotNull } ->
+            createArgs fieldName isNotNull "Int"
+
+        VarChar { fieldName, isNotNull } ->
+            createArgs fieldName isNotNull "String"
+
+        Boolean { fieldName, isNotNull } ->
+            createArgs fieldName isNotNull "Bool"
+
+        Datetime { fieldName, isNotNull } ->
+            createArgs fieldName isNotNull "Int"
+
+        Enum { fieldName, values, isNotNull } ->
+            createArgs fieldName isNotNull <| upperCamelize fieldName
+
+
 dbFieldToScalaCaseClass : DbField -> String
 dbFieldToScalaCaseClass dbField =
     let
@@ -1056,8 +1108,8 @@ dbFieldListToCirceJsonMethod tableName dbFieldList =
 \t)""" [ upperCamelize tableName, lowerCamelize tableName, scalaMapObjText ]
 
 
-dbFieldListToEnums : List DbField -> String
-dbFieldListToEnums dbFieldList =
+dbFieldListToScalaEnums : List DbField -> String
+dbFieldListToScalaEnums dbFieldList =
     dbFieldList
         |> List.filter isEnum
         |> List.map
@@ -1079,6 +1131,28 @@ object {0} {
 
 }"""
                             [ upperCamelize fieldName, valueCaseObjects ]
+
+                    _ ->
+                        ""
+            )
+        |> String.join "\n\n"
+
+
+dbFieldListToElmEnums : List DbField -> String
+dbFieldListToElmEnums dbFieldList =
+    dbFieldList
+        |> List.filter isEnum
+        |> List.map
+            (\dbField ->
+                case dbField of
+                    Enum { fieldName, values } ->
+                        let
+                            variants =
+                                values |> List.map (String.toLower >> upperCamelize) |> String.join "\n\t| "
+                        in
+                        interpolate """type {0}
+\t= {1}"""
+                            [ upperCamelize fieldName, variants ]
 
                     _ ->
                         ""
@@ -1111,9 +1185,39 @@ dbFieldArrayToScalaCode tableName dbFieldArray =
         ++ "\n\n"
         ++ dbFieldListToCirceJsonMethod tableName dbFieldList
         ++ "\n\n"
-        ++ dbFieldListToEnums dbFieldList
+        ++ dbFieldListToScalaEnums dbFieldList
         ++ "\n\n"
         ++ dbFieldListToModelClass tableName dbFieldList
+
+
+dbFieldListToRecordAlias : String -> List DbField -> String
+dbFieldListToRecordAlias tableName dbFieldList =
+    let
+        dbNotPrimaryFieldList =
+            dbFieldList |> List.filter (not << isPrimaryKey)
+
+        elmRecordFieldListText =
+            dbNotPrimaryFieldList
+                |> List.map dbFieldToElmRecordField
+                |> String.join "\n\t, "
+    in
+    interpolate """type alias {0} =
+\t{ {1}
+\t}"""
+        [ upperCamelize tableName |> String.dropRight 1
+        , elmRecordFieldListText
+        ]
+
+
+dbFieldArrayToElmCode : String -> Array DbField -> String
+dbFieldArrayToElmCode tableName dbFieldArray =
+    let
+        dbFieldList =
+            Array.toList dbFieldArray
+    in
+    dbFieldListToRecordAlias tableName dbFieldList
+        ++ "\n\n\n"
+        ++ dbFieldListToElmEnums dbFieldList
 
 
 
