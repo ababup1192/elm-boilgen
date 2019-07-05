@@ -297,6 +297,48 @@ case class Tables(
 \tbarStatus: BarStatus,
 \tversionNo: Long
 )
+
+case class Text private (value: Option[String]) extends AnyVal
+
+object Text {
+\tprivate[this] val maxLength = 10
+
+\tdef apply(value: Option[String]): Text = {
+\t\tval trimmed = value.map(_.trim)
+\t\trequire(trimmed.forall(t => !t.isEmpty && t.length <= maxLength))
+\t\tnew Text(trimmed)
+\t}
+}
+
+class TableCommandSpec extends FunSpec {
+\tdescribe("Textが1文字の時") {
+\t\tit("インスタンス化に成功すること") {
+\t\t\tassert(Text(Some("a")).value == Some("a"))
+\t\t}
+\t}
+
+\tdescribe("Textが10文字の時") {
+\t\tit("インスタンス化に成功すること") {
+\t\t\tassert(Text(Some("a" * 10)).value == Some("a" * 10))
+\t\t}
+\t}
+
+\tdescribe("Textが空白の時") {
+\t\tit("IllegalArgumentExceptionを投げること") {
+\t\t\tassertThrows[IllegalArgumentException] {
+\t\t\t\tText(Some(" "))
+\t\t\t}
+\t\t}
+\t}
+
+\tdescribe("Textが11文字の時") {
+\t\tit("IllegalArgumentExceptionを投げること") {
+\t\t\tassertThrows[IllegalArgumentException] {
+\t\t\t\tText(Some("a" * 11))
+\t\t\t}
+\t\t}
+\t}
+}
 """)
         ]
 

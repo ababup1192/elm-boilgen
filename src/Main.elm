@@ -1241,6 +1241,204 @@ dbFieldListToModelClass tableName dbFieldList =
 )""" [ upperCamelize tableName, scalaArgsListText ]
 
 
+varCharToDomainModel_ : String -> Int -> String
+varCharToDomainModel_ fieldName fieldLength =
+    interpolate """case class {0} private (value: String) extends AnyVal
+
+object {0} {
+\tprivate[this] val maxLength = {1}
+
+\tdef apply(value: String): Text = {
+\t\tval trimmed = value.trim
+\t\trequire(!trimmed.isEmpty && trimmed.length <= maxLength)
+\tnew Text(trimmed)
+\t}
+}""" [ fieldName, String.fromInt fieldLength ]
+
+
+varCharToDomainModelMaybe_ : String -> Int -> String
+varCharToDomainModelMaybe_ fieldName fieldLength =
+    interpolate """case class {0} private (value: Option[String]) extends AnyVal
+
+object {0} {
+\tprivate[this] val maxLength = {1}
+
+\tdef apply(value: Option[String]): Text = {
+\t\tval trimmed = value.map(_.trim)
+\t\trequire(trimmed.forall(t => !t.isEmpty && t.length <= maxLength))
+\t\tnew Text(trimmed)
+\t}
+}""" [ fieldName, String.fromInt fieldLength ]
+
+
+minTestCase_ : String -> String
+minTestCase_ fieldName =
+    interpolate """\tdescribe("{0}が1文字の時") {
+\t\tit("インスタンス化に成功すること") {
+\t\t\tassert({0}("a").value == "a")
+\t\t}
+\t}""" [ fieldName ]
+
+
+maxTestCase_ : String -> Int -> String
+maxTestCase_ fieldName fieldLength =
+    interpolate """\tdescribe("{0}が{1}文字の時") {
+\t\tit("インスタンス化に成功すること") {
+\t\t\tassert({0}("a" * {1}).value == "a" * {1})
+\t\t}
+\t}""" [ fieldName, String.fromInt fieldLength ]
+
+
+blankTestCase_ : String -> String
+blankTestCase_ fieldName =
+    interpolate """\tdescribe("{0}が空白の時") {
+\t\tit("IllegalArgumentExceptionを投げること") {
+\t\t\tassertThrows[IllegalArgumentException] {
+\t\t\t\t{0}(" ")
+\t\t\t}
+\t\t}
+\t}""" [ fieldName ]
+
+
+overTestCase_ : String -> Int -> String
+overTestCase_ fieldName fieldLength =
+    interpolate """\tdescribe("{0}が{1}文字の時") {
+\t\tit("IllegalArgumentExceptionを投げること") {
+\t\t\tassertThrows[IllegalArgumentException] {
+\t\t\t\t{0}("a" * {1})
+\t\t\t}
+\t\t}
+\t}""" [ fieldName, String.fromInt <| fieldLength + 1 ]
+
+
+varCharToDomainModelTestCase_ : String -> Int -> String
+varCharToDomainModelTestCase_ fieldName fieldLength =
+    minTestCase_ fieldName
+        ++ "\n\n"
+        ++ maxTestCase_ fieldName fieldLength
+        ++ "\n\n"
+        ++ blankTestCase_ fieldName
+        ++ "\n\n"
+        ++ overTestCase_ fieldName fieldLength
+
+
+minTestCaseMaybe_ : String -> String
+minTestCaseMaybe_ fieldName =
+    interpolate """\tdescribe("{0}が1文字の時") {
+\t\tit("インスタンス化に成功すること") {
+\t\t\tassert({0}(Some("a")).value == Some("a"))
+\t\t}
+\t}""" [ fieldName ]
+
+
+maxTestCaseMaybe_ : String -> Int -> String
+maxTestCaseMaybe_ fieldName fieldLength =
+    interpolate """\tdescribe("{0}が{1}文字の時") {
+\t\tit("インスタンス化に成功すること") {
+\t\t\tassert({0}(Some("a" * {1})).value == Some("a" * {1}))
+\t\t}
+\t}""" [ fieldName, String.fromInt fieldLength ]
+
+
+blankTestCaseMaybe_ : String -> String
+blankTestCaseMaybe_ fieldName =
+    interpolate """\tdescribe("{0}が空白の時") {
+\t\tit("IllegalArgumentExceptionを投げること") {
+\t\t\tassertThrows[IllegalArgumentException] {
+\t\t\t\tText(Some(" "))
+\t\t\t}
+\t\t}
+\t}""" [ fieldName ]
+
+
+overTestCaseMaybe_ : String -> Int -> String
+overTestCaseMaybe_ fieldName fieldLength =
+    interpolate """\tdescribe("{0}が{1}文字の時") {
+\t\tit("IllegalArgumentExceptionを投げること") {
+\t\t\tassertThrows[IllegalArgumentException] {
+\t\t\t\t{0}(Some("a" * {1}))
+\t\t\t}
+\t\t}
+\t}""" [ fieldName, String.fromInt <| fieldLength + 1 ]
+
+
+varCharToDomainModelTestCaseMaybe_ : String -> Int -> String
+varCharToDomainModelTestCaseMaybe_ fieldName fieldLength =
+    minTestCaseMaybe_ fieldName
+        ++ "\n\n"
+        ++ maxTestCaseMaybe_ fieldName fieldLength
+        ++ "\n\n"
+        ++ blankTestCaseMaybe_ fieldName
+        ++ "\n\n"
+        ++ overTestCaseMaybe_ fieldName fieldLength
+
+
+varCharToDomainModel : DbField -> String
+varCharToDomainModel dbField =
+    case dbField of
+        VarChar { fieldName, fieldLengthMaybe, isNotNull } ->
+            case fieldLengthMaybe of
+                Just fieldLength ->
+                    if isNotNull then
+                        varCharToDomainModel_ (upperCamelize fieldName) fieldLength
+
+                    else
+                        varCharToDomainModelMaybe_ (upperCamelize fieldName) fieldLength
+
+                Nothing ->
+                    ""
+
+        _ ->
+            ""
+
+
+varCharToDomainModelTestCase : DbField -> String
+varCharToDomainModelTestCase dbField =
+    case dbField of
+        VarChar { fieldName, fieldLengthMaybe, isNotNull } ->
+            case fieldLengthMaybe of
+                Just fieldLength ->
+                    if isNotNull then
+                        varCharToDomainModelTestCase_ (upperCamelize fieldName) fieldLength
+
+                    else
+                        varCharToDomainModelTestCaseMaybe_ (upperCamelize fieldName) fieldLength
+
+                Nothing ->
+                    ""
+
+        _ ->
+            ""
+
+
+dbFieldListToDomainModelClass : List DbField -> String
+dbFieldListToDomainModelClass dbFieldList =
+    dbFieldList
+        |> List.filter isVarChar
+        |> List.map varCharToDomainModel
+        |> String.join "\n"
+
+
+dbFieldListToDomainModelSpecClass : String -> List DbField -> String
+dbFieldListToDomainModelSpecClass tableName dbFieldList =
+    let
+        varChars =
+            dbFieldList |> List.filter isVarChar
+
+        domainModelTestCaseList =
+            varChars
+                |> List.map varCharToDomainModelTestCase
+                |> String.join "\n\n"
+    in
+    if List.isEmpty varChars then
+        ""
+
+    else
+        interpolate """class {0}CommandSpec extends FunSpec {
+{1}
+}""" [ upperCamelize tableName |> String.dropRight 1, domainModelTestCaseList ]
+
+
 dbFieldArrayToScalaCode : String -> Array DbField -> String
 dbFieldArrayToScalaCode tableName dbFieldArray =
     let
@@ -1254,6 +1452,10 @@ dbFieldArrayToScalaCode tableName dbFieldArray =
         ++ dbFieldListToScalaEnums dbFieldList
         ++ "\n\n"
         ++ dbFieldListToModelClass tableName dbFieldList
+        ++ "\n\n"
+        ++ dbFieldListToDomainModelClass dbFieldList
+        ++ "\n\n"
+        ++ dbFieldListToDomainModelSpecClass tableName dbFieldList
 
 
 dbFieldListToTypeAlias : String -> List DbField -> String
