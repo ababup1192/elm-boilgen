@@ -172,12 +172,15 @@ dbFieldDecoderHelper typeText =
 
 
 type alias Model =
-    { tableName : String, dbFields : Array DbField, newEnumValue : String, importedStatement : String }
+    { tableName : String
+    , dbFields : Array DbField
+    , newEnumValue : String
+    , importedStatement : String
+    }
 
 
 type alias DbFieldsRecord =
-    { dbFields : Array DbField
-    }
+    { dbFields : Array DbField }
 
 
 init : JD.Value -> ( Model, Cmd Msg )
@@ -1728,7 +1731,7 @@ typeTextToInitDbField : String -> String -> DbField
 typeTextToInitDbField typeText fieldName =
     case typeText of
         "primary" ->
-            PrimaryKey ""
+            PrimaryKey fieldName
 
         "bigint" ->
             initBigint fieldName
@@ -2150,16 +2153,6 @@ dbFieldToView idx newEnumValue dbField =
                         ]
                     ]
                 ]
-            , div []
-                [ div [ class "checkbox" ]
-                    [ label []
-                        [ input [ checked True, disabled True, type_ "checkbox" ]
-                            []
-                        , span [ class "disabled" ]
-                            []
-                        ]
-                    ]
-                ]
             ]
 
         BigInt { fieldName, fieldLengthMaybe, isUnsigned, isNotNull } ->
@@ -2182,8 +2175,6 @@ dbFieldToView idx newEnumValue dbField =
             , div []
                 [ checkboxView isNotNull <| UpdateBigIntTurnNotNull idx
                 ]
-            , div []
-                []
             ]
 
         DbInt { fieldName, isUnsigned, isNotNull } ->
@@ -2204,8 +2195,6 @@ dbFieldToView idx newEnumValue dbField =
             , div []
                 [ checkboxView isNotNull <| UpdateDbIntTurnNotNull idx
                 ]
-            , div []
-                []
             ]
 
         VarChar { fieldName, fieldLengthMaybe, isNotNull } ->
@@ -2227,8 +2216,6 @@ dbFieldToView idx newEnumValue dbField =
             , div []
                 [ checkboxView isNotNull <| UpdateVarcharTurnNotNull idx
                 ]
-            , div []
-                []
             ]
 
         Boolean { fieldName, isNotNull } ->
@@ -2248,8 +2235,6 @@ dbFieldToView idx newEnumValue dbField =
             , div []
                 [ checkboxView isNotNull <| UpdateBooleanTurnNotNull idx
                 ]
-            , div []
-                []
             ]
 
         Datetime { fieldName, isNotNull } ->
@@ -2271,8 +2256,6 @@ dbFieldToView idx newEnumValue dbField =
             , div []
                 [ checkboxView isNotNull <| UpdateDatetimeTurnNotNull idx
                 ]
-            , div []
-                []
             ]
 
         Enum { fieldName, values, isNotNull } ->
@@ -2305,8 +2288,6 @@ dbFieldToView idx newEnumValue dbField =
             , div []
                 [ checkboxView isNotNull <| UpdateEnumTurnNotNull idx
                 ]
-            , div []
-                []
             ]
 
 
@@ -2349,8 +2330,6 @@ view model =
                 [ text "Unsigned" ]
             , div []
                 [ text "Not Null" ]
-            , div []
-                [ text "Auto Increment" ]
             ]
                 ++ (dbFieldList |> List.indexedMap Tuple.pair |> List.concatMap (\( idx, dbField ) -> dbFieldToView idx newEnumValue dbField))
         , div [ class "add-column" ]
