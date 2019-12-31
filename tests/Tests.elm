@@ -245,6 +245,7 @@ object DummyTables {
 \t\tversionNo: Long = 1L
 \t): Tables =
 \t\tTables.create(
+\t\t\tid = /* TODO: replace generateId */,
 \t\t\tfooId = fooId,
 \t\t\tho = ho,
 \t\t\ttext = text,

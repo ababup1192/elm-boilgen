@@ -28,7 +28,6 @@ import Json.Encode as JE
 import Parser as P exposing ((|.), (|=))
 import Set
 import String.Interpolate exposing (interpolate)
-import Task as Task
 
 
 
@@ -39,6 +38,9 @@ port saveDbFields : JE.Value -> Cmd msg
 
 
 port clearDbFields : () -> Cmd msg
+
+
+port showParseError : JE.Value -> Cmd msg
 
 
 dbFieldsEncoder : Array DbField -> JE.Value
@@ -176,6 +178,7 @@ type alias Model =
     , dbFields : Array DbField
     , newEnumValue : String
     , importedStatement : String
+    , importErrorMessageMaybe : Maybe String
     }
 
 
@@ -192,6 +195,7 @@ init dbFieldsJsonValue =
                     initDbFields
               , newEnumValue = ""
               , importedStatement = ""
+              , importErrorMessageMaybe = Nothing
               }
             , Cmd.none
             )
@@ -215,6 +219,7 @@ init dbFieldsJsonValue =
                         ]
               , newEnumValue = ""
               , importedStatement = ""
+              , importErrorMessageMaybe = Nothing
               }
             , clearDbFields ()
             )
@@ -368,6 +373,7 @@ dbFieldEnumParser =
             |. P.symbol "`"
             |. P.spaces
             |. P.symbol "enum"
+            |. P.spaces
             |= P.sequence
                 { start = "("
                 , separator = ","
@@ -827,7 +833,7 @@ dbFieldToScalaNameBind dbField =
     in
     case dbField of
         PrimaryKey fieldName ->
-            bindText fieldName
+            lowerCamelize fieldName ++ " = /* TODO: replace generateId */"
 
         BigInt { fieldName } ->
             bindText fieldName
@@ -1114,7 +1120,7 @@ dbFieldListToDummyTableObject tableName dbFieldList =
                 |> String.join ",\n"
 
         scalaNameBindText =
-            dbNotPrimaryFieldList
+            dbFieldList
                 |> List.map (dbFieldToScalaNameBind >> (++) "\t\t\t")
                 |> String.join ",\n"
     in
@@ -2084,10 +2090,20 @@ update msg model =
             in
             case newDbFieldsResult of
                 Ok newDbFields ->
-                    ( { model | dbFields = newDbFields }, Cmd.none )
+                    Debug.log (Debug.toString newDbFields) <|
+                        ( { model | dbFields = newDbFields, importErrorMessageMaybe = Nothing }, Cmd.none )
 
-                Err err ->
-                    ( model, Cmd.none )
+                Err errors ->
+                    ( { model
+                        | importErrorMessageMaybe =
+                            Just <|
+                                String.join "\n" <|
+                                    Set.toList <|
+                                        Set.fromList <|
+                                            List.map (\err -> "row :" ++ String.fromInt err.row ++ ", col :" ++ String.fromInt err.col) errors
+                      }
+                    , Cmd.none
+                    )
 
 
 
@@ -2294,7 +2310,7 @@ dbFieldToView idx newEnumValue dbField =
 view : Model -> Browser.Document Msg
 view model =
     let
-        { dbFields, newEnumValue, importedStatement } =
+        { dbFields, newEnumValue, importedStatement, importErrorMessageMaybe } =
             model
 
         dbFieldList =
@@ -2308,10 +2324,6 @@ view model =
             , button [ class "button", onClick DownloadScala ] [ text "Scala" ]
             , button [ class "button", onClick DownloadTypeScript ] [ text "TypeScript" ]
             , button [ class "button", onClick DownloadElm ] [ text "Elm" ]
-            ]
-        , div [ class "import-ddl" ]
-            [ button [ class "button", onClick ImportDDL ] [ text "DDL Import" ]
-            , textarea [ class "import-statement", placeholder "`id` bigint(20) unsigned NOT NULL,\n`hoge_id` bigint(20) unsigned NOT NULL,\n...", onInput UpdateImportedStatement ] [ text importedStatement ]
             ]
         , div [ class "field" ]
             [ div [ class "control" ]
@@ -2334,6 +2346,20 @@ view model =
                 ++ (dbFieldList |> List.indexedMap Tuple.pair |> List.concatMap (\( idx, dbField ) -> dbFieldToView idx newEnumValue dbField))
         , div [ class "add-column" ]
             [ span [ class "button is-success", onClick AddDbField ] [ text "+" ]
+            ]
+        , div [ class "import-ddl" ]
+            [ button [ class "button", onClick ImportDDL ] [ text "DDL Import" ]
+            , textarea [ class "import-statement", placeholder "`id` bigint(20) unsigned NOT NULL,\n`hoge_id` bigint(20) unsigned NOT NULL,\n...", onInput UpdateImportedStatement ] [ text importedStatement ]
+            , case importErrorMessageMaybe of
+                Just error ->
+                    div [ class "notification is-danger" ]
+                        [ text "import error"
+                        , br [] []
+                        , text error
+                        ]
+
+                Nothing ->
+                    text ""
             ]
         ]
     }
