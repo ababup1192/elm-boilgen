@@ -2,7 +2,6 @@ port module Main exposing
     ( DbField(..)
     , Model
     , Msg(..)
-    , dbFieldArrayToCucumber
     , dbFieldArrayToDDL
     , dbFieldArrayToElmCode
     , dbFieldArrayToScalaCode
@@ -1170,23 +1169,6 @@ dbFieldListToDataTable dbFieldList =
         [ dataTableHeaders, dataTableValues ]
 
 
-dbFieldArrayToCucumber : String -> Array DbField -> String
-dbFieldArrayToCucumber tableName dbFieldArray =
-    let
-        dbFieldList =
-            dbFieldArray |> Array.toList
-
-        upperCamelTableName =
-            upperCamelize tableName
-    in
-    [ dbFieldArrayToInsertStatement upperCamelTableName tableName
-    , dbFieldListToDataTableMethod upperCamelTableName
-    , dbFieldListToDataTable
-    ]
-        |> List.map (\f -> f dbFieldList)
-        |> String.join "\n\n"
-
-
 dbFieldListToDummyTableObject : String -> List DbField -> String
 dbFieldListToDummyTableObject tableName dbFieldList =
     let
@@ -1896,7 +1878,6 @@ type Msg
     | InsertDbField Index
     | DeleteDbField Index
     | DownloadDDL
-    | DownloadCucumber
     | DownloadScala
     | DownloadTypeScript
     | DownloadElm
@@ -2194,9 +2175,6 @@ update msg model =
         DownloadDDL ->
             ( model, Download.string (tableName ++ ".sql") "text/plain" <| dbFieldArrayToDDL tableName dbFields )
 
-        DownloadCucumber ->
-            ( model, Download.string (upperCamelize tableName ++ ".java") "text/plain" <| dbFieldArrayToCucumber tableName dbFields )
-
         DownloadScala ->
             ( model, Download.string (upperCamelize tableName ++ ".scala") "text/plain" <| dbFieldArrayToScalaCode tableName dbFields )
 
@@ -2468,7 +2446,6 @@ view model =
     , body =
         [ div [ class "downloads" ]
             [ button [ class "button", onClick DownloadDDL ] [ text "DDL" ]
-            , button [ class "button", onClick DownloadCucumber ] [ text "Cucumber" ]
             , button [ class "button", onClick DownloadScala ] [ text "Scala" ]
             , button [ class "button", onClick DownloadTypeScript ] [ text "TypeScript" ]
             , button [ class "button", onClick DownloadElm ] [ text "Elm" ]

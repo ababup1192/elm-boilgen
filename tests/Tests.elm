@@ -1,7 +1,5 @@
 module Tests exposing
-    ( dbFieldArrayToCucumberTest
-    , dbFieldArrayToDDLTest
-    , dbFieldArrayToElmCodeTest
+    ( dbFieldArrayToElmCodeTest
     , dbFieldArrayToScalaCodeTest
     , dbFieldArrayToTypeScriptCodeTest
     , dbFieldsParserTest
@@ -127,68 +125,6 @@ CREATE TABLE `tables` (
 \tCONSTRAINT `FK_TABLES_HOGES_HOGE_ID` FOREIGN KEY (`hoge_id`) REFERENCES `hoges` (`hoge_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
                     """)
-        ]
-
-
-dbFieldArrayToCucumberTest : Test
-dbFieldArrayToCucumberTest =
-    describe "dbFieldArrayToCucumberTest"
-        [ test "Cucumber用のメソッド群が生成される" <|
-            \_ ->
-                let
-                    dbFieldArray =
-                        Array.fromList
-                            [ PrimaryKey "id"
-                            , BigInt
-                                { fieldName = "foo"
-                                , fieldLengthMaybe = Just 10
-                                , isUnsigned = False
-                                , isNotNull = True
-                                }
-                            , DbInt
-                                { fieldName = "ho"
-                                , isUnsigned = True
-                                , isNotNull = True
-                                }
-                            , VarChar
-                                { fieldName = "text"
-                                , fieldLengthMaybe = Just 10
-                                , isNotNull = False
-                                }
-                            , Boolean
-                                { fieldName = "hoge_flag"
-                                , isNotNull = False
-                                }
-                            , Datetime
-                                { fieldName = "start_at"
-                                , isNotNull = True
-                                }
-                            , Enum
-                                { fieldName = "enm"
-                                , values = [ "DEFAULT", "FIRST", "SECOND" ]
-                                , isNotNull = False
-                                }
-                            ]
-                in
-                dbFieldArrayToCucumber "tables" dbFieldArray
-                    |> Expect.equal (String.trim """
-private String createTablesBy(String id, String foo, String ho, String text, String hogeFlag, String startAt, String enm) {
-\treturn String.format("INSERT INTO `tables` (id, foo, ho, text, hoge_flag, start_at, enm, created_at, created_by, updated_at, updated_by, version_no) " +
-\t\t"VALUES " +
-\t\t"(%s, %s, %s, %s, %s, '%s', %s,'2019-04-01', 1, '2019-04-01', 1, 1);", id, foo, ho, nullableTextToStr(text), hogeFlag, startAt, nullableTextToStr(enm));
-}
-
-public void createTables(DataTable dataTable) {
-\tdataTable.asMaps().stream().map(dtm -> this.createTablesBy(
-\t\tdtm.get("id"), dtm.get("foo"), dtm.get("ho"), dtm.get("text"), dtm.get("hoge_flag"), dtm.get("start_at"), dtm.get("enm")
-\t)).forEach(this::executeStatement);
-}
-
-/*
-|id|foo|ho|text|hoge_flag|start_at|enm|
-|1|1|1|char|true|2019-04-01 00:00:00|DEFAULT|
-*/
-""")
         ]
 
 
