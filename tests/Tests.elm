@@ -475,6 +475,7 @@ dbFieldsParserTest =
 `ho` int unsigned NOT NULL,
 `aaa` varchar(10) NOT NULL,
 `bool` boolean NOT NULL,
+`dat` date NOT NULL,
 `dt` datetime(6) NOT NULL,
 `enm` enum('DEFAULT_VALUE', 'FIRST', 'SECOND') NOT NULL
                 """
@@ -507,6 +508,10 @@ dbFieldsParserTest =
                                     }
                                 , Boolean
                                     { fieldName = "bool"
+                                    , isNotNull = True
+                                    }
+                                , Date
+                                    { fieldName = "dat"
                                     , isNotNull = True
                                     }
                                 , Datetime

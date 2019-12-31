@@ -40,9 +40,6 @@ port saveDbFields : JE.Value -> Cmd msg
 port clearDbFields : () -> Cmd msg
 
 
-port showParseError : JE.Value -> Cmd msg
-
-
 dbFieldsEncoder : Array DbField -> JE.Value
 dbFieldsEncoder dbFields =
     JE.array dbFieldEncoder dbFields
@@ -85,6 +82,13 @@ dbFieldEncoder dbField =
         Boolean { fieldName, isNotNull } ->
             JE.object
                 [ ( "type_", JE.string "boolean" )
+                , ( "fieldName", JE.string fieldName )
+                , ( "isNotNull", JE.bool isNotNull )
+                ]
+
+        Date { fieldName, isNotNull } ->
+            JE.object
+                [ ( "type_", JE.string "date" )
                 , ( "fieldName", JE.string fieldName )
                 , ( "isNotNull", JE.bool isNotNull )
                 ]
@@ -151,6 +155,12 @@ dbFieldDecoderHelper typeText =
                 (JD.field "fieldName" JD.string)
                 (JD.field "isNotNull" JD.bool)
                 |> JD.map Boolean
+
+        "date" ->
+            JD.map2 Date_
+                (JD.field "fieldName" JD.string)
+                (JD.field "isNotNull" JD.bool)
+                |> JD.map Date
 
         "datetime" ->
             JD.map2 Datetime_
@@ -245,6 +255,11 @@ initBoolean fieldName =
     Boolean { fieldName = fieldName, isNotNull = True }
 
 
+initDate : String -> DbField
+initDate fieldName =
+    Date { fieldName = fieldName, isNotNull = True }
+
+
 initDatetime : String -> DbField
 initDatetime fieldName =
     Datetime { fieldName = fieldName, isNotNull = True }
@@ -279,6 +294,7 @@ dbFieldParser =
         , P.backtrackable dbFieldVarCharParser
         , P.backtrackable dbFieldBooleanParser
         , P.backtrackable dbFieldDatetimeParser
+        , P.backtrackable dbFieldDateParser
         , P.backtrackable dbFieldEnumParser
         ]
 
@@ -347,6 +363,19 @@ dbFieldBooleanParser =
             |. P.symbol "`"
             |. P.spaces
             |. P.symbol "boolean"
+            |. P.spaces
+            |= isNotNullParser
+
+
+dbFieldDateParser : P.Parser DbField
+dbFieldDateParser =
+    P.map Date <|
+        P.succeed Date_
+            |. P.symbol "`"
+            |= fieldNameParser
+            |. P.symbol "`"
+            |. P.spaces
+            |. P.symbol "date"
             |. P.spaces
             |= isNotNullParser
 
@@ -468,6 +497,12 @@ type alias Datetime_ =
     }
 
 
+type alias Date_ =
+    { fieldName : String
+    , isNotNull : Bool
+    }
+
+
 type alias Enum_ =
     { fieldName : String
     , values : List String
@@ -481,6 +516,7 @@ type DbField
     | DbInt DbInt_
     | VarChar VarChar_
     | Boolean Boolean_
+    | Date Date_
     | Datetime Datetime_
     | Enum Enum_
 
@@ -515,6 +551,12 @@ dbFieldToDDL dbField =
 
         Boolean { fieldName, isNotNull } ->
             interpolate "`{0}` boolean{1}"
+                [ fieldName
+                , visibleWord isNotNull " NOT NULL"
+                ]
+
+        Date { fieldName, isNotNull } ->
+            interpolate "`{0}` date{1}"
                 [ fieldName
                 , visibleWord isNotNull " NOT NULL"
                 ]
@@ -561,6 +603,9 @@ dbFieldToFormatArg dbField =
         Boolean { fieldName, isNotNull } ->
             lowerCamelize fieldName
 
+        Date { fieldName, isNotNull } ->
+            nullableWrapper isNotNull fieldName
+
         Datetime { fieldName, isNotNull } ->
             nullableWrapper isNotNull fieldName
 
@@ -584,6 +629,9 @@ dbFieldToFieldName dbField =
             fieldName
 
         Boolean { fieldName } ->
+            fieldName
+
+        Date { fieldName } ->
             fieldName
 
         Datetime { fieldName } ->
@@ -610,6 +658,9 @@ dbFieldToDataTableValue dbField =
 
         Boolean _ ->
             "true"
+
+        Date _ ->
+            "2019-04-01"
 
         Datetime _ ->
             "2019-04-01 00:00:00"
@@ -646,6 +697,9 @@ dbFieldToScalaArgs dbField =
 
         Boolean { fieldName, isNotNull } ->
             createArgs fieldName isNotNull "Boolean"
+
+        Date { fieldName, isNotNull } ->
+            createArgs fieldName isNotNull "LocalDate"
 
         Datetime { fieldName, isNotNull } ->
             createArgs fieldName isNotNull "ZonedDateTime"
@@ -690,6 +744,9 @@ dbFieldToTypeScriptField dbField =
 
         Boolean { fieldName, isNotNull } ->
             createArgs fieldName isNotNull "boolean"
+
+        Date { fieldName, isNotNull } ->
+            createArgs fieldName isNotNull "Date"
 
         Datetime { fieldName, isNotNull } ->
             createArgs fieldName isNotNull "Date"
@@ -742,6 +799,9 @@ dbFieldToElmRecordField dbField =
         Boolean { fieldName, isNotNull } ->
             createArgs fieldName isNotNull "Bool"
 
+        Date { fieldName, isNotNull } ->
+            createArgs fieldName isNotNull "Int"
+
         Datetime { fieldName, isNotNull } ->
             createArgs fieldName isNotNull "Int"
 
@@ -782,6 +842,9 @@ dbFieldToScalaCaseClass dbField =
         Boolean { fieldName, isNotNull } ->
             createArgs fieldName isNotNull "Boolean"
 
+        Date { fieldName, isNotNull } ->
+            createArgs fieldName isNotNull "LocalDate"
+
         Datetime { fieldName, isNotNull } ->
             createArgs fieldName isNotNull "ZonedDateTime"
 
@@ -818,6 +881,9 @@ dbFieldToScalaMapObj dbField tableName =
         Boolean { fieldName, isNotNull } ->
             createArgs fieldName <| lowerCamelize fieldName ++ ".asJson"
 
+        Date { fieldName, isNotNull } ->
+            createArgs fieldName <| lowerCamelize fieldName ++ ".toInstant.asJson"
+
         Datetime { fieldName, isNotNull } ->
             createArgs fieldName <| lowerCamelize fieldName ++ ".toInstant.asJson"
 
@@ -845,6 +911,9 @@ dbFieldToScalaNameBind dbField =
             bindText fieldName
 
         Boolean { fieldName } ->
+            bindText fieldName
+
+        Date { fieldName } ->
             bindText fieldName
 
         Datetime { fieldName } ->
@@ -888,6 +957,16 @@ isVarChar : DbField -> Bool
 isVarChar dbField =
     case dbField of
         VarChar _ ->
+            True
+
+        _ ->
+            False
+
+
+isDate : DbField -> Bool
+isDate dbField =
+    case dbField of
+        Date _ ->
             True
 
         _ ->
@@ -1665,11 +1744,31 @@ updateBooleanTurnNotNull dbField =
             dbField
 
 
+updateDateFieldName : String -> DbField -> DbField
+updateDateFieldName fieldName dbField =
+    case dbField of
+        Date date ->
+            Date { date | fieldName = fieldName }
+
+        _ ->
+            dbField
+
+
 updateDatetimeFieldName : String -> DbField -> DbField
 updateDatetimeFieldName fieldName dbField =
     case dbField of
         Datetime dtime ->
             Datetime { dtime | fieldName = fieldName }
+
+        _ ->
+            dbField
+
+
+updateDateTurnNotNull : DbField -> DbField
+updateDateTurnNotNull dbField =
+    case dbField of
+        Date date ->
+            Date { date | isNotNull = not date.isNotNull }
 
         _ ->
             dbField
@@ -1751,6 +1850,9 @@ typeTextToInitDbField typeText fieldName =
         "boolean" ->
             initBoolean fieldName
 
+        "date" ->
+            initDate fieldName
+
         "datetime" ->
             initDatetime fieldName
 
@@ -1772,6 +1874,7 @@ type Msg
     | UpdateDbIntFieldName Index String
     | UpdateVarcharFieldName Index String
     | UpdateBooleanFieldName Index String
+    | UpdateDateFieldName Index String
     | UpdateDatetimeFieldName Index String
     | UpdateEnumFieldName Index String
     | UpdateBigIntTurnUnsigned Index
@@ -1780,6 +1883,7 @@ type Msg
     | UpdateDbIntTurnNotNull Index
     | UpdateVarcharTurnNotNull Index
     | UpdateBooleanTurnNotNull Index
+    | UpdateDateTurnNotNull Index
     | UpdateDatetimeTurnNotNull Index
     | UpdateEnumTurnNotNull Index
     | UpdateBigIntLength Index String
@@ -1868,6 +1972,17 @@ update msg model =
             , saveDbFieldsCmd newDbFields
             )
 
+        UpdateDateFieldName idx fieldName ->
+            let
+                newDbFields =
+                    Array.update idx (updateDateFieldName fieldName) dbFields
+            in
+            ( { model
+                | dbFields = newDbFields
+              }
+            , saveDbFieldsCmd newDbFields
+            )
+
         UpdateDatetimeFieldName idx fieldName ->
             let
                 newDbFields =
@@ -1949,6 +2064,17 @@ update msg model =
             let
                 newDbFields =
                     Array.update idx updateBooleanTurnNotNull dbFields
+            in
+            ( { model
+                | dbFields = newDbFields
+              }
+            , saveDbFieldsCmd newDbFields
+            )
+
+        UpdateDateTurnNotNull idx ->
+            let
+                newDbFields =
+                    Array.update idx updateDateTurnNotNull dbFields
             in
             ( { model
                 | dbFields = newDbFields
@@ -2090,8 +2216,7 @@ update msg model =
             in
             case newDbFieldsResult of
                 Ok newDbFields ->
-                    Debug.log (Debug.toString newDbFields) <|
-                        ( { model | dbFields = newDbFields, importErrorMessageMaybe = Nothing }, Cmd.none )
+                    ( { model | dbFields = newDbFields, importErrorMessageMaybe = Nothing }, Cmd.none )
 
                 Err errors ->
                     ( { model
@@ -2126,6 +2251,8 @@ fieldTypeSelectView idx dbField =
                 [ text "BOOLEAN" ]
             , option [ selected <| isDatetime dbField, value "datetime" ]
                 [ text "DATETIME" ]
+            , option [ selected <| isDate dbField, value "date" ]
+                [ text "DATE" ]
             , option [ selected <| isEnum dbField, value "enum" ]
                 [ text "ENUM" ]
             ]
@@ -2250,6 +2377,27 @@ dbFieldToView idx newEnumValue dbField =
                 []
             , div []
                 [ checkboxView isNotNull <| UpdateBooleanTurnNotNull idx
+                ]
+            ]
+
+        Date { fieldName, isNotNull } ->
+            [ div []
+                [ input [ class "input", type_ "text", value fieldName, onInput <| UpdateDateFieldName idx ]
+                    []
+                , span [ class "insert-icon", onClick <| InsertDbField idx ] [ i [ class "far fa-caret-square-up" ] [] ]
+                , span [ class "trash-icon", onClick <| DeleteDbField idx ] [ i [ class "fas fa-trash" ] [] ]
+                ]
+            , div []
+                [ fieldTypeSelectView idx dbField
+                ]
+            , div []
+                [ input [ class "input", readonly True, type_ "text", value "" ]
+                    []
+                ]
+            , div []
+                []
+            , div []
+                [ checkboxView isNotNull <| UpdateDateTurnNotNull idx
                 ]
             ]
 
