@@ -483,7 +483,7 @@ dbFieldToDDL : DbField -> String
 dbFieldToDDL dbField =
     case dbField of
         PrimaryKey fieldName ->
-            "`" ++ fieldName ++ "` bigint(20) unsigned NOT NULL AUTO_INCREMENT"
+            "`" ++ fieldName ++ "` bigint(20) unsigned NOT NULL"
 
         BigInt { fieldName, fieldLengthMaybe, isUnsigned, isNotNull } ->
             interpolate "`{0}` bigint{1}{2}{3}"
@@ -2311,7 +2311,7 @@ view model =
             ]
         , div [ class "import-ddl" ]
             [ button [ class "button", onClick ImportDDL ] [ text "DDL Import" ]
-            , textarea [ class "import-statement", placeholder "`id` bigint(20) unsigned NOT NULL AUTO_INCREMENT,\n`hoge_id` bigint(20) unsigned NOT NULL,\n...", onInput UpdateImportedStatement ] [ text importedStatement ]
+            , textarea [ class "import-statement", placeholder "`id` bigint(20) unsigned NOT NULL,\n`hoge_id` bigint(20) unsigned NOT NULL,\n...", onInput UpdateImportedStatement ] [ text importedStatement ]
             ]
         , div [ class "field" ]
             [ div [ class "control" ]

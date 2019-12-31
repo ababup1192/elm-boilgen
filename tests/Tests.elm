@@ -107,7 +107,7 @@ dbFieldArrayToDDLTest =
                 dbFieldArrayToDDL "tables" dbFieldArray
                     |> Expect.equal (String.trim """
 CREATE TABLE `tables` (
-\t`id` bigint(20) unsigned NOT NULL AUTO_INCREMENT,
+\t`id` bigint(20) unsigned NOT NULL,
 \t`hoge_id` bigint(20) unsigned NOT NULL,
 \t`foo` bigint(5) NOT NULL,
 \t`bar` bigint(10),
