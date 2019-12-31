@@ -1589,34 +1589,82 @@ dbFieldArrayToElmCode tableName dbFieldArray =
 ---- UPDATE ----
 
 
+autocompleteByFieldName : DbField -> String -> DbField
+autocompleteByFieldName defaultDbField fieldName =
+    if String.startsWith "is" fieldName && (not <| isBoolean defaultDbField) then
+        initBoolean fieldName
+
+    else if String.startsWith "can" fieldName && (not <| isBoolean defaultDbField) then
+        initBoolean fieldName
+
+    else if String.startsWith "has" fieldName && (not <| isBoolean defaultDbField) then
+        initBoolean fieldName
+
+    else if String.endsWith "id" fieldName && not (isBigint defaultDbField || isPrimaryKey defaultDbField) then
+        BigInt { fieldName = fieldName, fieldLengthMaybe = Just 20, isUnsigned = True, isNotNull = True }
+
+    else if String.endsWith "index" fieldName && (not <| isDbInt defaultDbField) then
+        DbInt { fieldName = fieldName, isUnsigned = True, isNotNull = True }
+
+    else if String.endsWith "name" fieldName && (not <| isVarChar defaultDbField) then
+        initVarchar fieldName
+
+    else if String.endsWith "content" fieldName && (not <| isVarChar defaultDbField) then
+        initVarchar fieldName
+
+    else if String.endsWith "title" fieldName && (not <| isVarChar defaultDbField) then
+        initVarchar fieldName
+
+    else if String.endsWith "text" fieldName && (not <| isVarChar defaultDbField) then
+        initVarchar fieldName
+
+    else if String.endsWith "status" fieldName && (not <| isEnum defaultDbField) then
+        initEnum fieldName
+
+    else if String.endsWith "type" fieldName && (not <| isEnum defaultDbField) then
+        initEnum fieldName
+
+    else
+        defaultDbField
+
+
 updatePrimaryKeyFieldName : String -> DbField -> DbField
 updatePrimaryKeyFieldName fieldName dbField =
-    case dbField of
-        PrimaryKey _ ->
-            PrimaryKey fieldName
+    autocompleteByFieldName
+        (case dbField of
+            PrimaryKey _ ->
+                PrimaryKey fieldName
 
-        _ ->
-            dbField
+            _ ->
+                dbField
+        )
+        fieldName
 
 
 updateBigIntFieldName : String -> DbField -> DbField
 updateBigIntFieldName fieldName dbField =
-    case dbField of
-        BigInt bigInt ->
-            BigInt { bigInt | fieldName = fieldName }
+    autocompleteByFieldName
+        (case dbField of
+            BigInt bigInt ->
+                BigInt { bigInt | fieldName = fieldName }
 
-        _ ->
-            dbField
+            _ ->
+                dbField
+        )
+        fieldName
 
 
 updateDbIntFieldName : String -> DbField -> DbField
 updateDbIntFieldName fieldName dbField =
-    case dbField of
-        DbInt dbInt ->
-            DbInt { dbInt | fieldName = fieldName }
+    autocompleteByFieldName
+        (case dbField of
+            DbInt dbInt ->
+                DbInt { dbInt | fieldName = fieldName }
 
-        _ ->
-            dbField
+            _ ->
+                dbField
+        )
+        fieldName
 
 
 updateBigIntTurnUnsigned : DbField -> DbField
@@ -1674,12 +1722,15 @@ updateBigIntLength lenText dbField =
 
 updateVarcharFieldName : String -> DbField -> DbField
 updateVarcharFieldName fieldName dbField =
-    case dbField of
-        VarChar varchar ->
-            VarChar { varchar | fieldName = fieldName }
+    autocompleteByFieldName
+        (case dbField of
+            VarChar varchar ->
+                VarChar { varchar | fieldName = fieldName }
 
-        _ ->
-            dbField
+            _ ->
+                dbField
+        )
+        fieldName
 
 
 updateVarcharTurnNotNull : DbField -> DbField
@@ -1708,12 +1759,15 @@ updateVarcharLength lenText dbField =
 
 updateBooleanFieldName : String -> DbField -> DbField
 updateBooleanFieldName fieldName dbField =
-    case dbField of
-        Boolean boolean ->
-            Boolean { boolean | fieldName = fieldName }
+    autocompleteByFieldName
+        (case dbField of
+            Boolean boolean ->
+                Boolean { boolean | fieldName = fieldName }
 
-        _ ->
-            dbField
+            _ ->
+                dbField
+        )
+        fieldName
 
 
 updateBooleanTurnNotNull : DbField -> DbField
@@ -1728,22 +1782,28 @@ updateBooleanTurnNotNull dbField =
 
 updateDateFieldName : String -> DbField -> DbField
 updateDateFieldName fieldName dbField =
-    case dbField of
-        Date date ->
-            Date { date | fieldName = fieldName }
+    autocompleteByFieldName
+        (case dbField of
+            Date date ->
+                Date { date | fieldName = fieldName }
 
-        _ ->
-            dbField
+            _ ->
+                dbField
+        )
+        fieldName
 
 
 updateDatetimeFieldName : String -> DbField -> DbField
 updateDatetimeFieldName fieldName dbField =
-    case dbField of
-        Datetime dtime ->
-            Datetime { dtime | fieldName = fieldName }
+    autocompleteByFieldName
+        (case dbField of
+            Datetime dtime ->
+                Datetime { dtime | fieldName = fieldName }
 
-        _ ->
-            dbField
+            _ ->
+                dbField
+        )
+        fieldName
 
 
 updateDateTurnNotNull : DbField -> DbField
@@ -1768,12 +1828,15 @@ updateDatetimeTurnNotNull dbField =
 
 updateEnumFieldName : String -> DbField -> DbField
 updateEnumFieldName fieldName dbField =
-    case dbField of
-        Enum enum ->
-            Enum { enum | fieldName = fieldName }
+    autocompleteByFieldName
+        (case dbField of
+            Enum enum ->
+                Enum { enum | fieldName = fieldName }
 
-        _ ->
-            dbField
+            _ ->
+                dbField
+        )
+        fieldName
 
 
 updateEnumTurnNotNull : DbField -> DbField
